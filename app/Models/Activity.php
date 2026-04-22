@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'action', 'target', 'type', 'is_read', 'href'])]
+#[Fillable(['user_id', 'action', 'target', 'type', 'is_read', 'href', 'ip_address', 'user_agent'])]
 class Activity extends Model
 {
     /**
@@ -23,11 +23,14 @@ class Activity extends Model
     public static function log(string $action, string $target, string $type = 'system', string $href = '#')
     {
         self::create([
-            'user_id' => auth()->id(), // Ambil ID user yang sedang login
-            'action'  => $action,
-            'target'  => $target,
-            'type'    => $type,
-            'href'    => $href,
+            'user_id'    => auth()->id(), 
+            'action'     => $action,
+            'target'     => $target,
+            'type'       => $type,
+            'href'       => $href,
+            // Rekam IP dan Browser
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
         ]);
     }
 }

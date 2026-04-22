@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, CheckCircle2, Video, MessageSquare, Activity } from 'lucide-react';
+import { Bell, CheckCircle2, PlusCircle, Edit2, Trash2, Activity } from 'lucide-react';
 import { Link, usePage, router } from '@inertiajs/react';
 import { Transition } from '@headlessui/react';
 
@@ -25,12 +25,22 @@ export default function NotificationDropdown() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Perubahan utama: Sesuaikan icon dan warna berdasarkan tipe aktivitas (CRUD)
     const getIcon = (type) => {
-        switch(type) {
-            case 'video': return <Video size={12} className="text-emerald-500" />;
-            case 'comment': return <MessageSquare size={12} className="text-blue-500" />;
-            case 'system': return <Activity size={12} className="text-amber-500" />;
-            default: return <Bell size={12} className="text-zinc-500" />;
+        switch(type?.toLowerCase()) {
+            case 'create': 
+            case 'add':
+                return <PlusCircle size={12} className="text-emerald-500" />;
+            case 'update': 
+            case 'edit':
+                return <Edit2 size={12} className="text-blue-500" />;
+            case 'delete': 
+            case 'remove':
+                return <Trash2 size={12} className="text-rose-500" />;
+            case 'system': 
+                return <Activity size={12} className="text-amber-500" />;
+            default: 
+                return <Bell size={12} className="text-zinc-500" />;
         }
     };
 
@@ -100,7 +110,6 @@ export default function NotificationDropdown() {
                             </div>
                         ) : (
                             recentActivities.map((notif) => {
-                                // LOGIKA PENTING: Cek apakah yang melakukan aktivitas adalah User yang sedang Login
                                 const isMe = currentUser.id === notif.actor_id;
                                 const displayName = isMe ? 'Anda' : notif.user_name;
 
@@ -116,9 +125,12 @@ export default function NotificationDropdown() {
                                                 <img src={notif.user_avatar} alt={displayName} className="w-9 h-9 rounded-full object-cover border border-zinc-200 dark:border-zinc-700" />
                                             ) : (
                                                 <div className="w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center border border-zinc-200 dark:border-zinc-700">
-                                                    <Activity size={16} className="text-zinc-500" />
+                                                    <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                                                        {displayName.charAt(0).toUpperCase()}
+                                                    </span>
                                                 </div>
                                             )}
+                                            {/* Badge kecil di pojok avatar yang menunjukkan jenis tindakan */}
                                             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800 rounded-full flex items-center justify-center shadow-sm">
                                                 {getIcon(notif.type)}
                                             </div>
@@ -129,8 +141,8 @@ export default function NotificationDropdown() {
                                                 <span className="font-semibold text-zinc-900 dark:text-zinc-100 mr-1">
                                                     {displayName}
                                                 </span>
-                                                {/* Tambahkan tata bahasa Inggris yang benar jika pelakunya adalah "You" */}
-                                                {isMe ? notif.action.replace('added', 'added').replace('deleted', 'deleted') : notif.action}
+                                                {/* Memperbaiki tata bahasa jika isMe bernilai true */}
+                                                {isMe ? notif.action.replace('added', 'menambahkan').replace('updated', 'memperbarui').replace('deleted', 'menghapus') : notif.action}
                                                 <span className="font-medium text-zinc-800 dark:text-zinc-200 ml-1">"{notif.target}"</span>
                                             </p>
                                             <div className="flex items-center gap-1.5 mt-1 text-[11px] font-medium text-zinc-400 dark:text-zinc-500">

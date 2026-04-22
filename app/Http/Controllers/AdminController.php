@@ -67,7 +67,8 @@ class AdminController extends Controller
             'profile_photo' => $photoPath,
         ]);
 
-        Activity::log('menambahkan akun admin baru untuk', $admin->name, 'system', route('admins.index'));
+        // UBAH type menjadi 'create'
+        Activity::log('menambahkan akun admin baru untuk', $admin->name, 'create', route('admins.index'));
         
         return redirect()->route('admins.index')->with('message', 'Admin created successfully.');
     }
@@ -121,7 +122,8 @@ class AdminController extends Controller
 
         $admin->update($data);
         
-        Activity::log('memperbarui profil dan kredensial milik', $admin->name, 'system', route('admins.index'));
+        // UBAH type menjadi 'update'
+        Activity::log('memperbarui profil dan kredensial milik', $admin->name, 'update', route('admins.index'));
 
         return redirect()->route('admins.index')->with('message', 'Admin updated successfully.');
     }
@@ -146,7 +148,8 @@ class AdminController extends Controller
         
         $admin->delete();
 
-        Activity::log('menghapus akun admin atas nama', $adminName, 'system', route('admins.index'));
+        // UBAH type menjadi 'delete' (tidak perlu route URL karena data yang dituju sudah tidak ada)
+        Activity::log('menghapus akun admin atas nama', $adminName, 'delete');
         
         return redirect()->route('admins.index')->with('message', 'Admin deleted successfully.');
     }

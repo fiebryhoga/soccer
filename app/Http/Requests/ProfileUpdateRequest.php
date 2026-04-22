@@ -18,14 +18,15 @@ class ProfileUpdateRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => [
+            'username' => [
                 'required',
                 'string',
-                'lowercase',
-                'email',
                 'max:255',
+                // Cek apakah username unik di tabel users, abaikan ID user yang sedang login
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
+            // Validasi file foto (opsional, harus gambar, max 2MB)
+            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'], 
         ];
     }
 }

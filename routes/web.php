@@ -3,6 +3,8 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\GlobalSearchController;
+use App\Http\Controllers\ClubController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -24,6 +26,8 @@ Route::get('/activity', function () {
 
 // 4. Grouping Route untuk User yang Sudah Login
 Route::middleware('auth')->group(function () {
+
+    Route::get('/search', [GlobalSearchController::class, 'search'])->name('global.search');
     
     // --- Bawaan Profile Breeze ---
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -39,13 +43,29 @@ Route::middleware('auth')->group(function () {
     Route::post('/admins/{admin}', [AdminController::class, 'update'])->name('admins.update');
 
     Route::get('/activity', [ActivityController::class, 'index'])->name('activity.index');
+    Route::get('/activity/export', [ActivityController::class, 'export'])->name('activity.export'); // Tambahkan ini
+    
 
     // Tambahkan di dalam Route::middleware('auth')->group(...)
     Route::post('/activity/mark-read', function () {
-        // Ubah semua activity milik user menjadi sudah dibaca
         \App\Models\Activity::where('is_read', false)->update(['is_read' => true]);
         return redirect()->back();
     })->name('activity.markRead');
+
+    Route::get('/club', [ClubController::class, 'index'])->name('club.index');
+    Route::post('/club', [ClubController::class, 'store'])->name('club.store');
+    
+    // UBAH INI MENJADI PATCH
+    Route::patch('/club/{club}', [ClubController::class, 'update'])->name('club.update'); 
+    
+    // Rute Pemain
+    Route::post('/players', [ClubController::class, 'storePlayer'])->name('players.store');
+    Route::post('/players/bulk', [ClubController::class, 'storeBulkPlayer'])->name('players.storeBulk');
+    
+    // UBAH INI MENJADI PATCH
+    Route::patch('/players/{player}', [ClubController::class, 'updatePlayer'])->name('players.update'); 
+    
+    Route::delete('/players/{player}', [ClubController::class, 'destroyPlayer'])->name('players.destroy');
 
 });
 

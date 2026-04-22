@@ -3,6 +3,7 @@ import {
     LayoutDashboard, 
     Users,
     ShieldCheck,
+    Shield, // <-- Tambahkan icon Shield untuk Klub
     Activity, 
     Settings, 
     BarChart3, 
@@ -26,9 +27,11 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
             ]
         },
         {
-            label: 'Preferences',
+            label: 'Management', // <-- Diubah agar lebih mencerminkan isinya
             items: [
-                { name: 'Admins', icon: ShieldCheck, href: route('admins.index') }, // Tambahkan baris ini
+                // TAMBAHAN MENU KLUB: Nama "Club" otomatis akan cocok dengan route('club.*')
+                { name: 'Club Info', icon: Shield, href: route('club.index') }, 
+                { name: 'Admins', icon: ShieldCheck, href: route('admins.index') }, 
                 { name: 'Settings', icon: Settings, href: '#' },
             ]
         }
@@ -73,14 +76,14 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                         {/* Nav Items */}
                         <nav className="space-y-1">
                             {group.items.map((item, index) => {
-                                // Ganti logic active route sesuai kebutuhanmu nanti
+                                // Logika active route: mengambil kata pertama dari item.name (misal "Club Info" jadi "club")
                                 const isActive = route().current(item.name.toLowerCase().split(' ')[0] + '*'); 
                                 
                                 return (
                                     <Link
                                         key={index}
                                         href={item.href}
-                                        className={`relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 whitespace-nowrap group ${
+                                        className={`relative flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 whitespace-nowrap group ${
                                             isActive 
                                                 ? 'bg-zinc-100/80 dark:bg-zinc-800/50 text-zinc-900 dark:text-zinc-50 font-medium' 
                                                 : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 hover:text-zinc-900 dark:hover:text-zinc-100'

@@ -10,13 +10,15 @@ return new class extends Migration
     {
         Schema::create('activities', function (Blueprint $table) {
             $table->id();
-            // Siapa yang melakukan (Cascade: jika user dihapus, lognya juga terhapus/opsional)
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete(); 
-            $table->string('action'); // Contoh: "created a new admin"
-            $table->string('target'); // Contoh: "Coach Shin"
-            $table->string('type')->default('system'); // system, video, comment
+            $table->string('action'); 
+            $table->string('target'); 
+            $table->string('type')->default('system'); 
             $table->boolean('is_read')->default(false);
-            $table->string('href')->nullable(); // Link ke detail
+            $table->string('href')->nullable(); 
+            // Tambahan untuk mencatat IP dan Browser/Perangkat
+            $table->string('ip_address')->nullable();
+            $table->text('user_agent')->nullable();
             $table->timestamps();
         });
     }

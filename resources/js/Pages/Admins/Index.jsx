@@ -1,16 +1,28 @@
+import { useState } from 'react'; // Tambahkan ini
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { Search, Plus, Edit2, Trash2, ShieldCheck, MoreHorizontal } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, ShieldCheck } from 'lucide-react';
 
 export default function Index({ auth, admins }) {
-    // Fungsi delete menggunakan Inertia
     const { delete: destroy } = useForm();
+    
+    // State untuk menyimpan teks pencarian
+    const [searchQuery, setSearchQuery] = useState('');
 
     const handleDelete = (id) => {
         if (confirm('Are you sure you want to delete this admin?')) {
             destroy(route('admins.destroy', id));
         }
     };
+
+    // Logika filter: Cek apakah nama atau username mengandung teks pencarian (case-insensitive)
+    const filteredAdmins = admins.filter((admin) => {
+        const query = searchQuery.toLowerCase();
+        return (
+            admin.name.toLowerCase().includes(query) ||
+            admin.username.toLowerCase().includes(query)
+        );
+    });
 
     return (
         <AuthenticatedLayout
@@ -28,6 +40,8 @@ export default function Index({ auth, admins }) {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
                         <input 
                             type="text" 
+                            value={searchQuery} // Hubungkan ke state
+                            onChange={(e) => setSearchQuery(e.target.value)} // Update state saat mengetik
                             placeholder="Search by name or username..." 
                             className="w-full pl-9 pr-4 py-2 bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800/80 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-500 transition-colors shadow-sm"
                         />
@@ -55,15 +69,14 @@ export default function Index({ auth, admins }) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                                {/* Di dunia nyata, ini di-map dari variabel `admins.data` */}
-                                {admins.map((admin) => (
+                                {/* Gunakan filteredAdmins, BUKAN admins */}
+                                {filteredAdmins.map((admin) => (
                                     <tr key={admin.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors group">
                                         
-                                        {/* Kolom Avatar & Nama */}
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <img 
-                                                    src={admin.profile_photo || `https://ui-avatars.com/api/?name=${admin.name}&background=random&color=fff`} 
+                                                    src={admin.profile_photo || `https://ui-avatars.com/api/?name=${admin.name}&background=random&color=fff&bold=true`} 
                                                     alt={admin.name} 
                                                     className="w-10 h-10 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 shadow-sm"
                                                 />
@@ -74,7 +87,6 @@ export default function Index({ auth, admins }) {
                                             </div>
                                         </td>
 
-                                        {/* Kolom Role */}
                                         <td className="px-6 py-4">
                                             <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800/80 text-[11px] font-medium text-zinc-600 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700/50">
                                                 <ShieldCheck size={12} className="text-zinc-500" />
@@ -82,12 +94,10 @@ export default function Index({ auth, admins }) {
                                             </div>
                                         </td>
 
-                                        {/* Kolom Tanggal */}
                                         <td className="px-6 py-4 text-zinc-500 dark:text-zinc-400 text-[13px]">
                                             {new Date(admin.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                         </td>
 
-                                        {/* Kolom Aksi */}
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Link 
@@ -98,7 +108,6 @@ export default function Index({ auth, admins }) {
                                                     <Edit2 size={14} />
                                                 </Link>
                                                 
-                                                {/* Cegah user menghapus dirinya sendiri */}
                                                 {auth.user.id !== admin.id && (
                                                     <button 
                                                         onClick={() => handleDelete(admin.id)}
@@ -113,10 +122,18 @@ export default function Index({ auth, admins }) {
                                     </tr>
                                 ))}
 
-                                {admins.length === 0 && (
+                                {/* Ubah deteksi kosong agar sesuai dengan hasil pencarian */}
+                                {filteredAdmins.length === 0 && (
                                     <tr>
-                                        <td colSpan="4" className="px-6 py-8 text-center text-zinc-500 dark:text-zinc-400 text-sm">
-                                            No admins found.
+                                        <td colSpan="4" className="px-6 py-12 text-center">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="w-12 h-12 rounded-full bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center mb-3">
+                                                    <Search size={24} className="text-zinc-300 dark:text-zinc-700" />
+                                                </div>
+                                                <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+                                                    {searchQuery ? `Tidak ada admin yang cocok dengan "${searchQuery}".` : 'Belum ada data admin.'}
+                                                </p>
+                                            </div>
                                         </td>
                                     </tr>
                                 )}

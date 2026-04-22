@@ -4,59 +4,81 @@ namespace App\Http\Controllers;
 
 use App\Models\Activity;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ActivityController extends Controller
 {
-    /**
-     * Menampilkan halaman penuh untuk Activity Log (Jejak Aktivitas Sistem).
-     */
     public function index(Request $request)
     {
-        // Mengambil 50 aktivitas terbaru dari database beserta data user yang melakukannya
-        $activities = Activity::with('user')
-            ->latest()
-            ->limit(50)
+        // Membangun query dengan filter
+        $query = Activity::with('user')->latest();
+
+        // Logika Tab (All vs System)
+        if ($request->tab === 'system') {
+            $query->where('type', 'system');
+        }
+
+        // Logika Filter Tanggal
+        if ($request->date) {
+            $query->whereDate('created_at', $request->date);
+        }
+
+        $activities = $query->limit(100)
             ->get()
             ->map(function ($log) {
                 return [
                     'id' => $log->id,
-                    
-                    // KUNCI PENTING: Menyertakan actor_id agar React bisa mengecek 
-                    // apakah user yang sedang login adalah orang yang sama yang melakukan aksi ini
                     'actor_id' => $log->user_id,
-                    
-                    // Nama pengguna, jika user terhapus atau tidak ada, otomatis tertulis 'System'
                     'user_name' => $log->user ? $log->user->name : 'System',
-                    
-                    // Membuat URL lengkap ke folder storage public agar foto profil bisa muncul
                     'user_avatar' => ($log->user && $log->user->profile_photo) 
                         ? asset('storage/' . $log->user->profile_photo) 
                         : null,
-                        
                     'action' => $log->action,
                     'target' => $log->target,
-                    'type' => $log->type, // 'system', 'video', 'comment', dll
-                    
-                    // Format waktu jam (contoh: 10:30 AM)
+                    'type' => $log->type,
                     'time' => $log->created_at->format('H:i') . ' WIB',
-                    
-                    // Format tanggal lengkap beserta tahun, atau tulisan 'Today' jika terjadi hari ini
-                    'date' => $log->created_at->isToday() 
-                        ? 'Hari ini' 
-                        : $log->created_at->locale('id')->translatedFormat('l, d M Y'),
-                        
-                    // Pastikan dikirim sebagai tipe data Boolean (True/False)
+                    'date' => $log->created_at->locale('id')->translatedFormat('d M Y'), // Format tanggal rapi
+                    'full_date' => $log->created_at->format('Y-m-d H:i:s'),
                     'is_read' => (bool) $log->is_read,
-                    
-                    // Link rute jika notifikasi/aktivitas ini bisa diklik
                     'href' => $log->href,
+                    'ip_address' => $log->ip_address ?? 'Unknown IP',
+                    'user_agent' => $log->user_agent ?? 'Unknown Device',
                 ];
             });
 
-        // Merender komponen React di folder resources/js/Pages/Activity/Index.jsx
-        // sambil mengirimkan data variabel $activities
         return inertia('Activity/Index', [
-            'activities' => $activities
+            'activities' => $activities,
+            'filters' => $request->only(['tab', 'date']) // Kirim filter saat ini ke React
         ]);
+    }
+
+    /**
+     * Fitur Download Log ke CSV
+     */
+    public function export(Request $request)
+    {
+        $query = Activity::with('user')->latest();
+
+        if ($request->tab === 'system') {
+            $query->where('type', 'system');
+        }
+        if ($request->date) {
+            $query->whereDate('created_at', $request->date);
+        }
+
+        $activities = $query->get();
+
+        // Load view khusus PDF dan passing datanya
+        $pdf = Pdf::loadView('pdf.activity-log', [
+            'activities' => $activities,
+            'filters' => $request->only(['tab', 'date']),
+            'export_date' => now()->translatedFormat('l, d F Y H:i WIB')
+        ]);
+
+        // Atur ukuran kertas ke A4 Landscape agar tabelnya muat
+        $pdf->setPaper('A4', 'landscape');
+
+        return $pdf->download('activity_logs_' . date('Ymd_His') . '.pdf');
     }
 }
