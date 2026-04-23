@@ -251,7 +251,7 @@ export default function PlayerManagement({ club }) {
                         {club.players.length === 0 && (
                             <tr>
                                 <td colSpan="4" className="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400 text-sm">
-                                    Klub belum memiliki pemain.
+                                    Klub ini belum memiliki pemain.
                                 </td>
                             </tr>
                         )}
