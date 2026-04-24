@@ -5,7 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Club extends Model
 {
-    protected $fillable = ['name', 'logo'];
+    protected $fillable = ['name', 'logo', 'season_start_date'];
 
     public function players()
     {

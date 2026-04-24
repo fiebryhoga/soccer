@@ -3,64 +3,49 @@
 namespace App\Http\Controllers;
 
 use App\Models\Benchmark;
-use App\Models\Player;
 use App\Models\Club;
 use App\Models\Activity;
 use Illuminate\Http\Request;
 
 class BenchmarkController extends Controller
 {
-    /**
-     * Menampilkan halaman daftar Benchmark (Target)
-     */
-    public function index()
-    {
-        // Ambil semua benchmark beserta data pemain (jika itu benchmark individu)
-        $benchmarks = Benchmark::with('player')->latest()->get();
-        
-        // Ambil data pemain untuk pilihan dropdown jika klien ingin membuat target individu
-        $players = Player::orderBy('position_number', 'asc')->get();
-
+    public function index() {
         return inertia('Benchmarks/Index', [
-            'benchmarks' => $benchmarks,
-            'players' => $players,
+            'benchmarks' => Benchmark::latest()->get(),
         ]);
     }
 
-    /**
-     * Menyimpan Benchmark Baru ke Database
-     */
-    public function store(Request $request)
-    {
+    public function create() {
+        return inertia('Benchmarks/Form');
+    }
+
+    public function store(Request $request) {
         $request->validate([
             'name' => 'required|string|max:255',
-            'target_type' => 'required|in:team,player', // Pilihan: Untuk Tim atau Individu
-            'player_id' => 'required_if:target_type,player|nullable|exists:players,id',
-            'metrics' => 'required|array', // JSON metrics (Total Distance, SPRINT, dll) dari Frontend
+            'metrics' => 'required|array',
         ]);
 
-        $club = Club::firstOrFail(); // Ambil data klub saat ini
-
+        $club = Club::firstOrFail();
         $benchmark = Benchmark::create([
             'club_id' => $club->id,
             'name' => $request->name,
-            'target_type' => $request->target_type,
-            'player_id' => $request->target_type === 'player' ? $request->player_id : null,
-            'metrics' => $request->metrics, // Laravel otomatis mengubah Array ke JSON
+            'target_type' => 'team',
+            'metrics' => $request->metrics,
         ]);
 
-        // Simpan Jejak Aktivitas
-        $targetInfo = $request->target_type === 'team' ? 'Tim' : 'Individu';
-        Activity::log('membuat standar benchmark ' . $targetInfo . ' baru', $benchmark->name, 'create');
+        // LOG ACTIVITY
+        Activity::log('membuat standar benchmark Tim baru', $benchmark->name, 'create');
 
-        return redirect()->back()->with('message', 'Benchmark berhasil disimpan.');
+        return redirect()->route('benchmarks.index')->with('message', 'Benchmark berhasil dibuat.');
     }
 
-    /**
-     * Memperbarui Benchmark (Jika pelatih ingin merevisi angka target)
-     */
-    public function update(Request $request, Benchmark $benchmark)
-    {
+    public function edit(Benchmark $benchmark) {
+        return inertia('Benchmarks/Form', [
+            'benchmark' => $benchmark
+        ]);
+    }
+
+    public function update(Request $request, Benchmark $benchmark) {
         $request->validate([
             'name' => 'required|string|max:255',
             'metrics' => 'required|array',
@@ -71,20 +56,18 @@ class BenchmarkController extends Controller
             'metrics' => $request->metrics,
         ]);
 
-        Activity::log('merevisi angka target pada benchmark', $benchmark->name, 'update');
+        // LOG ACTIVITY
+        Activity::log('memperbarui standar benchmark Tim', $benchmark->name, 'update');
 
-        return redirect()->back()->with('message', 'Benchmark berhasil diperbarui.');
+        return redirect()->route('benchmarks.index')->with('message', 'Benchmark berhasil diperbarui.');
     }
 
-    /**
-     * Menghapus Benchmark
-     */
-    public function destroy(Benchmark $benchmark)
-    {
-        $benchmarkName = $benchmark->name;
+    public function destroy(Benchmark $benchmark) {
+        $name = $benchmark->name;
         $benchmark->delete();
 
-        Activity::log('menghapus benchmark', $benchmarkName, 'delete');
+        // LOG ACTIVITY
+        Activity::log('menghapus standar benchmark Tim', $name, 'delete');
 
         return redirect()->back()->with('message', 'Benchmark berhasil dihapus.');
     }
