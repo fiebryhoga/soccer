@@ -3,36 +3,44 @@ import {
     LayoutDashboard, 
     Users,
     ShieldCheck,
-    Shield, // <-- Tambahkan icon Shield untuk Klub
+    Shield, 
     Activity, 
     Settings, 
     BarChart3, 
     PanelLeftClose, 
     PanelLeftOpen,
     LifeBuoy,
-    LogOut
+    LogOut,
+    Target // <-- Import icon Target untuk menu Benchmarks
 } from 'lucide-react';
 import IconButton from '@/Components/ui/IconButton';
 
 export default function Sidebar({ isExpanded, setIsExpanded }) {
-    // Membagi menu ke dalam grup agar terlihat lebih profesional
+    
+    // Susunan Menu dengan penambahan activeRule agar deteksi rute aktif lebih akurat
     const navGroups = [
         {
             label: 'Analytics',
             items: [
-                { name: 'Dashboard', icon: LayoutDashboard, href: route('dashboard') },
-                { name: 'Match Analysis', icon: Activity, href: '#', badge: '3' },
-                { name: 'Player Stats', icon: Users, href: '#' },
-                { name: 'Tactics Board', icon: BarChart3, href: '#', badge: 'New' },
+                { name: 'Dashboard', icon: LayoutDashboard, href: route('dashboard'), activeRule: 'dashboard' },
+                
+                // TAMBAHAN MENU GPS / TRAINING METRICS
+                { name: 'GPS & Performance', icon: Activity, href: route('metrics.index'), activeRule: 'metrics.*', badge: 'New' },
+                
+                { name: 'Player Stats', icon: Users, href: '#', activeRule: 'players.*' },
+                { name: 'Tactics Board', icon: BarChart3, href: '#', activeRule: 'tactics.*' },
             ]
         },
         {
-            label: 'Management', // <-- Diubah agar lebih mencerminkan isinya
+            label: 'Management',
             items: [
-                // TAMBAHAN MENU KLUB: Nama "Club" otomatis akan cocok dengan route('club.*')
-                { name: 'Club Info', icon: Shield, href: route('club.index') }, 
-                { name: 'Admins', icon: ShieldCheck, href: route('admins.index') }, 
-                { name: 'Settings', icon: Settings, href: '#' },
+                { name: 'Club Info', icon: Shield, href: route('club.index'), activeRule: 'club.*' },
+                
+                // TAMBAHAN MENU BENCHMARK (TARGET FISIK)
+                { name: 'Benchmarks', icon: Target, href: route('benchmarks.index'), activeRule: 'benchmarks.*' },
+                
+                { name: 'Admins', icon: ShieldCheck, href: route('admins.index'), activeRule: 'admins.*' },
+                { name: 'Settings', icon: Settings, href: '#', activeRule: 'settings.*' },
             ]
         }
     ];
@@ -43,7 +51,7 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                 isExpanded ? 'w-64' : 'w-16'
             } hidden sm:flex flex-col bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] relative z-20 h-full overflow-hidden`}
         >
-            {/* Header Sidebar (Logo & Minimize) */}
+            {/* Header Sidebar */}
             <div className="h-14 shrink-0 flex items-center justify-between px-3 border-b border-zinc-200 dark:border-zinc-800/80">
                 <div className={`flex items-center gap-3 overflow-hidden transition-all duration-300 ${!isExpanded ? 'w-0 opacity-0' : 'w-full opacity-100'}`}>
                     <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-zinc-800 to-zinc-950 dark:from-zinc-100 dark:to-zinc-300 text-white dark:text-zinc-900 flex items-center justify-center shrink-0 shadow-md">
@@ -76,8 +84,8 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                         {/* Nav Items */}
                         <nav className="space-y-1">
                             {group.items.map((item, index) => {
-                                // Logika active route: mengambil kata pertama dari item.name (misal "Club Info" jadi "club")
-                                const isActive = route().current(item.name.toLowerCase().split(' ')[0] + '*'); 
+                                // LOGIKA BARU: Menggunakan activeRule yang didefinisikan di atas
+                                const isActive = item.href !== '#' && route().current(item.activeRule); 
                                 
                                 return (
                                     <Link
@@ -90,7 +98,7 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                                         } ${!isExpanded && 'justify-center px-0'}`}
                                         title={!isExpanded ? item.name : undefined}
                                     >
-                                        {/* Active Indicator Bar (Garis kecil di kiri saat aktif) */}
+                                        {/* Active Indicator Bar */}
                                         {isActive && isExpanded && (
                                             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-zinc-900 dark:bg-zinc-100 rounded-r-full shadow-[0_0_8px_rgba(0,0,0,0.1)] dark:shadow-[0_0_8px_rgba(255,255,255,0.1)]"></div>
                                         )}
@@ -123,7 +131,7 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                 ))}
             </div>
 
-            {/* Bottom Actions (Pinned to bottom) */}
+            {/* Bottom Actions */}
             <div className="shrink-0 p-3 border-t border-zinc-200 dark:border-zinc-800/80">
                 <nav className="space-y-1">
                     <Link
@@ -137,7 +145,6 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                         </span>
                     </Link>
 
-                    {/* Tombol Logout (Menggunakan method POST ke Breeze) */}
                     <Link
                         href={route('logout')}
                         method="post"

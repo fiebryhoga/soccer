@@ -5,6 +5,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\ClubController;
+use App\Http\Controllers\BenchmarkController;
+use App\Http\Controllers\TrainingMetricController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -66,6 +68,15 @@ Route::middleware('auth')->group(function () {
     Route::patch('/players/{player}', [ClubController::class, 'updatePlayer'])->name('players.update'); 
     
     Route::delete('/players/{player}', [ClubController::class, 'destroyPlayer'])->name('players.destroy');
+
+    Route::get('/benchmarks', [BenchmarkController::class, 'index'])->name('benchmarks.index');
+    Route::post('/benchmarks', [BenchmarkController::class, 'store'])->name('benchmarks.store');
+    Route::patch('/benchmarks/{benchmark}', [BenchmarkController::class, 'update'])->name('benchmarks.update');
+    Route::delete('/benchmarks/{benchmark}', [BenchmarkController::class, 'destroy'])->name('benchmarks.destroy');
+
+    Route::get('/metrics', [TrainingMetricController::class, 'index'])->name('metrics.index');
+    Route::post('/metrics/bulk', [TrainingMetricController::class, 'storeBulk'])->name('metrics.storeBulk');
+    Route::delete('/metrics/reset', [TrainingMetricController::class, 'destroyByDate'])->name('metrics.destroyByDate');
 
 });
 
