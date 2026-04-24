@@ -1,15 +1,34 @@
 <?php
+
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Player extends Model
 {
-    // UBAH jersey_number menjadi position_number
-    protected $fillable = ['club_id', 'name', 'profile_photo', 'position_number', 'position'];
+    use HasFactory;
+
+    protected $fillable = [
+        'club_id',
+        'name',
+        'position_number',
+        'position',
+        'profile_photo',
+        'highest_metrics',
+    ];
+
+    protected $casts = [
+        'highest_metrics' => 'array',
+    ];
 
     public function club()
     {
         return $this->belongsTo(Club::class);
+    }
+
+    public function metrics()
+    {
+        return $this->hasMany(PlayerMetric::class);
     }
 }

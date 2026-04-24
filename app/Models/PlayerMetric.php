@@ -2,21 +2,33 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PlayerMetric extends Model
 {
-    protected $fillable = ['player_id', 'date', 'benchmark_id', 'metrics'];
+    use HasFactory;
 
+    // TAMBAHKAN 'performance_log_id' DI SINI
+    protected $fillable = [
+        'performance_log_id', 
+        'player_id', 
+        'metrics',
+        'sort_order',
+    ];
+
+    // Pastikan casting array untuk kolom metrics
     protected $casts = [
         'metrics' => 'array',
     ];
 
-    public function player() {
-        return $this->belongsTo(Player::class);
+    public function log()
+    {
+        return $this->belongsTo(PerformanceLog::class, 'performance_log_id');
     }
 
-    public function benchmark() {
-        return $this->belongsTo(Benchmark::class);
+    public function player()
+    {
+        return $this->belongsTo(Player::class);
     }
 }

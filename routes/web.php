@@ -85,6 +85,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/performance-logs/{log}', [PerformanceLogController::class, 'show'])->name('performance-logs.show');
     Route::post('/performance-logs/{log}/metrics', [PerformanceLogController::class, 'storeMetrics'])->name('performance-logs.storeMetrics');
 
+    Route::post('performance-logs/{log}/metrics/bulk', [PerformanceLogController::class, 'storeMetrics'])
+        ->name('performance-logs.metrics.storeBulk');
+
+    Route::post('performance-logs/{log}/update-metrics', [PerformanceLogController::class, 'updateMetrics'])
+        ->name('performance-logs.metrics.updateBulk');
+
+    Route::get('performance-logs/{log}/export/pdf', [App\Http\Controllers\PerformanceLogController::class, 'exportPdf'])
+        ->name('performance-logs.export.pdf');
+
+    Route::get('performance-logs/{log}/export/excel', [App\Http\Controllers\PerformanceLogController::class, 'exportExcel'])
+        ->name('performance-logs.export.excel');
+
 });
 
 require __DIR__.'/auth.php';

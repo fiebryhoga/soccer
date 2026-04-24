@@ -13,25 +13,23 @@ class BenchmarkSeeder extends Seeder
      */
     public function run(): void
     {
-        // Pastikan ada club terlebih dahulu (jika belum ada, buat dummy)
         $club = Club::firstOrCreate(
             ['id' => 1],
             ['name' => 'Klub Utama', 'logo' => null]
         );
 
-        // Data metrik hasil pemetaan dari Excel yang Anda berikan
-        // Urutan: CB, FB, MF, WF, FW
+        // DATA METRIK (Key sudah disamakan dengan metrics.js)
         $metrics = [
             'total_distance' => [
                 'CB' => 6000, 'FB' => 6000, 'MF' => 6000, 'WF' => 6000, 'FW' => 6000
             ],
-            'distance_per_min' => [
+            'dist_per_min' => [ // Diperbaiki: dari distance_per_min
                 'CB' => 80, 'FB' => 80, 'MF' => 80, 'WF' => 80, 'FW' => 80
             ],
-            'hir_distance' => [
+            'hir_18_kmh' => [ // Diperbaiki: dari hir_distance
                 'CB' => 400, 'FB' => 800, 'MF' => 700, 'WF' => 1000, 'FW' => 900
             ],
-            'hsr_distance' => [
+            'hsr_21_kmh' => [ // Diperbaiki: dari hsr_distance
                 'CB' => 300, 'FB' => 300, 'MF' => 300, 'WF' => 300, 'FW' => 300
             ],
             'sprint_distance' => [
@@ -55,16 +53,23 @@ class BenchmarkSeeder extends Seeder
             'player_load' => [
                 'CB' => 959, 'FB' => 1023, 'MF' => 1075, 'WF' => 1066, 'FW' => 898
             ],
+            // Tambahkan Max Velocity (karena ini ada di metrics.js dan punya target persentase)
+            'max_velocity' => [
+                'CB' => 28, 'FB' => 31, 'MF' => 29, 'WF' => 32, 'FW' => 30
+            ],
+            // Jika ada metrik lain yang butuh target, masukkan di sini dengan Key yang sesuai metrics.js
         ];
 
-        // Masukkan data ke Database (Gunakan updateOrCreate agar tidak dobel kalau di-run berkali-kali)
+        // Hapus Benchmark lama (opsional) agar tidak dobel nama saat testing
+        Benchmark::where('name', 'contoh 1')->delete();
+
         Benchmark::updateOrCreate(
             [
                 'club_id' => $club->id,
-                'name' => 'contoh 1', // Nama Benchmark sesuai permintaan
-                'target_type' => 'team'
+                'name' => 'contoh 1',
             ],
             [
+                'target_type' => 'team',
                 'metrics' => $metrics
             ]
         );
