@@ -25,6 +25,8 @@
         "framer-motion": "^12.38.0",
         "html2pdf.js": "^0.14.0",
         "lucide-react": "^1.8.0",
+        "react-is": "^19.2.5",
+        "recharts": "^3.8.1",
         "xlsx": "^0.18.5"
     }
 }

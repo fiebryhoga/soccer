@@ -9,7 +9,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('players', function (Blueprint $table) {
-            // Menambahkan kolom json untuk menyimpan rekor tertinggi semua metrik
             $table->json('highest_metrics')->nullable()->after('position');
         });
     }

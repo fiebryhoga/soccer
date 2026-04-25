@@ -18,4 +18,9 @@ class PerformanceLog extends Model
     public function benchmark() {
         return $this->belongsTo(Benchmark::class);
     }
+
+    public function playerMetrics()
+    {
+        return $this->hasMany(PlayerMetric::class, 'performance_log_id', 'id');
+    }
 }

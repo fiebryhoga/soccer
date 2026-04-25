@@ -1,69 +1,81 @@
-import React from 'react';
-import { Zap, AlertCircle } from 'lucide-react';
+// resources/js/Pages/PerformanceLogs/Partials/ConfigurationHeader.jsx
+
+import React, { useMemo } from 'react';
+import { AlertCircle, Info, AlignLeft, Target } from 'lucide-react';
+import SelectDropdown from '@/Components/ui/SelectDropdown'; // Menggunakan custom dropdown kita
 
 export default function ConfigurationHeader({ data, setData, benchmarks, errors }) {
+    
+    // Format opsi benchmark untuk SelectDropdown
+    const benchmarkOptions = useMemo(() => {
+        const opts = benchmarks?.map(bm => ({ value: bm.id.toString(), label: bm.name })) || [];
+        return [{ value: '', label: 'Wajib Pilih Benchmark' }, ...opts];
+    }, [benchmarks]);
+
+    const hasBenchmarkError = errors?.benchmark_id || !data.benchmark_id;
+
     return (
-        <div className="p-4 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-[#121212] flex flex-col lg:flex-row gap-4 items-center justify-between">
-            <div className="flex w-full lg:w-2/3 gap-4">
+        <div className="p-5 lg:p-6 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] flex flex-col xl:flex-row gap-6 items-start xl:items-center justify-between transition-colors">
+            
+            <div className="flex w-full xl:w-2/3 flex-col sm:flex-row gap-5">
                 {/* INPUT JUDUL SESI */}
-                <div className="flex-1">
-                    <label className="block text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
-                        Judul / Nama Sesi <span className="text-red-500">*</span>
+                <div className="flex-1 space-y-2">
+                    <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                        <AlignLeft size={12} strokeWidth={2.5} /> Judul / Nama Sesi <span className="text-red-500">*</span>
                     </label>
                     <input 
                         type="text" 
                         value={data.title} 
                         onChange={e => setData('title', e.target.value)} 
-                        className={`w-full bg-white dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg text-[11px] py-1.5 px-3 focus:ring-1 outline-none transition-colors
-                            ${errors?.title ? 'border-red-500 focus:ring-red-500' : 'border-zinc-300 dark:border-zinc-700 focus:ring-zinc-400'}
+                        className={`w-full bg-zinc-50/50 dark:bg-zinc-900/50 border rounded-lg text-sm font-semibold py-2.5 px-3.5 focus:outline-none focus:ring-1 transition-colors shadow-sm
+                            ${errors?.title 
+                                ? 'border-red-300 dark:border-red-900 text-red-900 dark:text-red-100 focus:ring-red-500 bg-red-50/50 dark:bg-red-900/10' 
+                                : 'border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-zinc-900 dark:focus:ring-zinc-100'}
                         `} 
-                        placeholder="Masukkan judul sesi..."
+                        placeholder="Contoh: Recovery Day, Internal Game..."
                         required 
                     />
                     {errors?.title && (
-                        <div className="flex items-center gap-1 mt-1 text-[9px] text-red-500 font-medium">
-                            <AlertCircle size={10} /> {errors.title}
+                        <div className="flex items-center gap-1.5 text-[10px] text-red-500 font-bold tracking-wide">
+                            <AlertCircle size={12} strokeWidth={2.5} /> {errors.title}
                         </div>
                     )}
                 </div>
 
                 {/* SELECT BENCHMARK */}
-                <div className="flex-1">
-                    <label className="block text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
-                        Benchmark Acuan <span className="text-red-500">*</span>
+                <div className="flex-1 space-y-2">
+                    <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                        <Target size={12} strokeWidth={2.5} /> Benchmark Acuan <span className="text-red-500">*</span>
                     </label>
-                    <select 
-                        value={data.benchmark_id || ''} // Pastikan string kosong jika null agar placeholder muncul
-                        onChange={e => setData('benchmark_id', e.target.value)} 
-                        className={`w-full bg-white dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg text-[11px] py-1.5 px-3 focus:ring-1 outline-none transition-colors cursor-pointer
-                            ${errors?.benchmark_id || !data.benchmark_id ? 'border-red-500 focus:ring-red-500 bg-red-50/30 dark:bg-red-900/10' : 'border-zinc-300 dark:border-zinc-700 focus:ring-zinc-400'}
-                        `} 
-                        required
-                    >
-                        <option value="" disabled>-- Wajib Pilih Benchmark --</option>
-                        {benchmarks?.map(bm => (
-                            <option key={bm.id} value={bm.id}>{bm.name}</option>
-                        ))}
-                    </select>
                     
-                    {/* Pesan Error: Jika dari backend gagal, ATAU jika user belum memilih sama sekali secara visual */}
-                    {(errors?.benchmark_id || !data.benchmark_id) && (
-                        <div className="flex items-center gap-1 mt-1 text-[9px] text-red-500 font-medium animate-pulse">
-                            <AlertCircle size={10} /> 
-                            {errors?.benchmark_id ? errors.benchmark_id : 'Benchmark wajib dipilih sebelum menyimpan data!'}
+                    {/* Menggunakan Custom SelectDropdown */}
+                    <SelectDropdown 
+                        value={data.benchmark_id || ''} 
+                        onChange={e => setData('benchmark_id', e.target.value)} 
+                        options={benchmarkOptions}
+                        className={`py-2.5 text-sm ${hasBenchmarkError ? 'border-red-300 dark:border-red-900 text-red-600 dark:text-red-400 focus:ring-red-500 bg-red-50/50 dark:bg-red-900/10' : ''}`}
+                    />
+                    
+                    {/* Pesan Error Benchmark */}
+                    {hasBenchmarkError && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-red-500 font-bold tracking-wide animate-pulse">
+                            <AlertCircle size={12} strokeWidth={2.5} /> 
+                            {errors?.benchmark_id ? errors.benchmark_id : 'Pilih target acuan agar persentase Excel terhitung.'}
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* INFO PANEL */}
-            <div className="w-full lg:w-auto bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 p-2.5 rounded-lg flex items-center gap-2">
-                <Zap size={14} className="text-amber-500 shrink-0" />
-                <p className="text-[9px] text-amber-700 dark:text-amber-400 font-medium">
-                    Tahan & geser ikon titik enam pada baris tabel untuk merombak urutan pemain.<br/>
-                    Rekor "Highest" akan terupdate otomatis jika pecah rekor.
+            {/* INFO PANEL (Monochrome Premium Design) */}
+            <div className="w-full xl:w-auto bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl flex items-start gap-3 shadow-sm">
+                <div className="p-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-md text-zinc-600 dark:text-zinc-400 shrink-0">
+                    <Info size={16} strokeWidth={2.5} />
+                </div>
+                <p className="text-[10px] md:text-xs text-zinc-600 dark:text-zinc-400 font-medium leading-relaxed max-w-sm">
+                    <span className="font-bold text-zinc-900 dark:text-zinc-200">Tips Navigasi:</span> Tahan & geser ikon titik enam di sisi kiri tabel untuk merombak urutan pemain. Rekor tertinggi ("Highest") akan otomatis diperbarui saat Anda menyimpan data.
                 </p>
             </div>
+
         </div>
     );
 }

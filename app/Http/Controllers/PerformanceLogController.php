@@ -360,25 +360,30 @@ class PerformanceLogController extends Controller
     // ==========================================
     // EXPORT PDF
     // ==========================================
+    // ==========================================
+    // EXPORT PDF
+    // ==========================================
     public function exportPdf(PerformanceLog $log)
     {
         $log->load('benchmark');
         $club = Club::first();
         $benchmark = $log->benchmark ? $log->benchmark->toArray() : null;
         
-        $players = Player::orderBy('position_number', 'asc')->get();
+        $players = Player::all(); // Ambil semua pemain tanpa diurutkan dulu
         $metrics = PlayerMetric::where('performance_log_id', $log->id)->get()->keyBy('player_id');
 
         $reportData = $players->map(function($player) use ($metrics, $benchmark) {
             $playerMetric = $metrics->get($player->id);
             $rawMetrics = $playerMetric ? $playerMetric->metrics : [];
             $historicalHighest = $player->highest_metrics ?? [];
+            
+            // Simpan sort_order untuk dipakai saat sorting koleksi
+            $player->sort_order = $playerMetric ? $playerMetric->sort_order : null;
 
-            // Proses semua kalkulasi di sini sebelum dilempar ke Blade
             $calculatedData = [];
             $columnsToCalculate = [
                 'total_distance', 'dist_per_min', 'hir_18_kmh', 'hir_19_8_kmh', 
-                'hsr_21_kmh', 'sprint_distance', 'total_18kmh', 'max_velocity'
+                'hsr_21_kmh', 'sprint_distance', 'total_18kmh', 'max_velocity', 'highest_velocity'
             ];
 
             foreach ($columnsToCalculate as $colId) {
@@ -387,10 +392,29 @@ class PerformanceLogController extends Controller
                 $calculatedData[$colId . '_percent'] = $this->calculatePercentage($colId, $val, $player->position, $benchmark, $historicalHighest);
             }
 
-            // Gabungkan metrik mentah dengan metrik hasil kalkulasi
             $player->session_metrics = array_merge($rawMetrics, $calculatedData);
             return $player;
         });
+
+        // SORTING DATA BERDASARKAN ATURAN YANG SAMA DENGAN FRONTEND
+        $reportData = $reportData->sort(function ($a, $b) {
+            // 1. Jika keduanya punya sort_order, urutkan berdasarkan sort_order (drag-and-drop)
+            if ($a->sort_order !== null && $b->sort_order !== null) {
+                return $a->sort_order <=> $b->sort_order;
+            }
+
+            // 2. Default urutan posisi (CB -> FB -> MF -> WF -> FW)
+            $positionOrder = ['CB' => 1, 'FB' => 2, 'MF' => 3, 'WF' => 4, 'FW' => 5];
+            $posA = $positionOrder[strtoupper($a->position)] ?? 99;
+            $posB = $positionOrder[strtoupper($b->position)] ?? 99;
+
+            if ($posA !== $posB) {
+                return $posA <=> $posB;
+            }
+
+            // 3. Jika posisi sama, urutkan berdasarkan nama (abjad)
+            return strcmp($a->name, $b->name);
+        })->values(); // Reset ulang key array setelah sorting
 
         // Hitung Rata-Rata Tim
         $teamAverage = [];
@@ -431,18 +455,21 @@ class PerformanceLogController extends Controller
         $club = Club::first();
         $benchmark = $log->benchmark ? $log->benchmark->toArray() : null;
         
-        $players = Player::orderBy('position_number', 'asc')->get();
+        $players = Player::all(); // Ambil semua pemain tanpa diurutkan dulu
         $metrics = PlayerMetric::where('performance_log_id', $log->id)->get()->keyBy('player_id');
 
         $reportData = $players->map(function($player) use ($metrics, $benchmark) {
             $playerMetric = $metrics->get($player->id);
             $rawMetrics = $playerMetric ? $playerMetric->metrics : [];
             $historicalHighest = $player->highest_metrics ?? [];
+            
+            // Simpan sort_order
+            $player->sort_order = $playerMetric ? $playerMetric->sort_order : null;
 
             $calculatedData = [];
             $columnsToCalculate = [
                 'total_distance', 'dist_per_min', 'hir_18_kmh', 'hir_19_8_kmh', 
-                'hsr_21_kmh', 'sprint_distance', 'total_18kmh', 'max_velocity'
+                'hsr_21_kmh', 'sprint_distance', 'total_18kmh', 'max_velocity', 'highest_velocity'
             ];
 
             foreach ($columnsToCalculate as $colId) {
@@ -455,7 +482,27 @@ class PerformanceLogController extends Controller
             return $player;
         });
 
-        // Hitung Rata-Rata Tim untuk Excel
+        // SORTING DATA BERDASARKAN ATURAN YANG SAMA DENGAN FRONTEND
+        $reportData = $reportData->sort(function ($a, $b) {
+            // 1. Jika keduanya punya sort_order
+            if ($a->sort_order !== null && $b->sort_order !== null) {
+                return $a->sort_order <=> $b->sort_order;
+            }
+
+            // 2. Default urutan posisi
+            $positionOrder = ['CB' => 1, 'FB' => 2, 'MF' => 3, 'WF' => 4, 'FW' => 5];
+            $posA = $positionOrder[strtoupper($a->position)] ?? 99;
+            $posB = $positionOrder[strtoupper($b->position)] ?? 99;
+
+            if ($posA !== $posB) {
+                return $posA <=> $posB;
+            }
+
+            // 3. Jika posisi sama, urut berdasarkan abjad
+            return strcmp($a->name, $b->name);
+        })->values(); // Reset ulang key array setelah sorting
+
+        // Hitung Rata-Rata Tim
         $teamAverage = [];
         $columnsToAverage = [
             'total_distance', 'dist_per_min', 'hir_18_kmh', 'hir_19_8_kmh', 

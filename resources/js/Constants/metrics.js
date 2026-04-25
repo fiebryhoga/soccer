@@ -22,11 +22,16 @@ export const FIXED_EXCEL_COLUMNS = [
     
     // Kelompok Velocity
     { id: 'max_velocity', label: 'Max Velocity (km/h)', hasPercent: true },
-    { id: 'highest_velocity', label: 'Highest Of All Session (km/h)' }, // Ini sepertinya bukan dari paste, tapi statis? Tetap kita masukkan
+    { id: 'highest_velocity', label: 'Highest Of All Session (km/h)' },
     
     { id: 'player_load', label: 'Total Player Load' },
 ];
 
 export const MASTER_METRICS = FIXED_EXCEL_COLUMNS;
+
+// Filter metrics yang TIDAK dipakai di form Benchmark
+export const BENCHMARK_METRICS = FIXED_EXCEL_COLUMNS.filter(m => 
+    !['max_velocity', 'highest_velocity', 'total_duration'].includes(m.id)
+);
 
 export const POSITIONS = ['CB', 'FB', 'MF', 'WF', 'FW'];

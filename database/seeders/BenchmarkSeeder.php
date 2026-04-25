@@ -50,13 +50,7 @@ class BenchmarkSeeder extends Seeder
             'total_18kmh' => [
                 'CB' => 318, 'FB' => 318, 'MF' => 318, 'WF' => 318, 'FW' => 318
             ],
-            'player_load' => [
-                'CB' => 959, 'FB' => 1023, 'MF' => 1075, 'WF' => 1066, 'FW' => 898
-            ],
-            // Tambahkan Max Velocity (karena ini ada di metrics.js dan punya target persentase)
-            'max_velocity' => [
-                'CB' => 28, 'FB' => 31, 'MF' => 29, 'WF' => 32, 'FW' => 30
-            ],
+            
             // Jika ada metrik lain yang butuh target, masukkan di sini dengan Key yang sesuai metrics.js
         ];
 

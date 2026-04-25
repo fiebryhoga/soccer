@@ -8,6 +8,7 @@ use App\Http\Controllers\ClubController;
 use App\Http\Controllers\BenchmarkController;
 use App\Http\Controllers\TrainingMetricController;
 use App\Http\Controllers\PerformanceLogController;
+use App\Http\Controllers\PerformanceAnalysisController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -70,12 +71,13 @@ Route::middleware('auth')->group(function () {
     
     Route::delete('/players/{player}', [ClubController::class, 'destroyPlayer'])->name('players.destroy');
 
+
     Route::get('/benchmarks', [BenchmarkController::class, 'index'])->name('benchmarks.index');
-    
     Route::get('/benchmarks/create', [BenchmarkController::class, 'create'])->name('benchmarks.create');
-    Route::get('/benchmarks/{benchmark}/edit', [BenchmarkController::class, 'edit'])->name('benchmarks.edit');
-    
     Route::post('/benchmarks', [BenchmarkController::class, 'store'])->name('benchmarks.store');
+    Route::get('/benchmarks/{benchmark}', [BenchmarkController::class, 'show'])->name('benchmarks.show');
+    Route::get('/benchmarks/{benchmark}/edit', [BenchmarkController::class, 'edit'])->name('benchmarks.edit');
+    Route::post('/benchmarks/{benchmark}/duplicate', [BenchmarkController::class, 'duplicate'])->name('benchmarks.duplicate');
     Route::patch('/benchmarks/{benchmark}', [BenchmarkController::class, 'update'])->name('benchmarks.update');
     Route::delete('/benchmarks/{benchmark}', [BenchmarkController::class, 'destroy'])->name('benchmarks.destroy');
 
@@ -96,6 +98,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('performance-logs/{log}/export/excel', [App\Http\Controllers\PerformanceLogController::class, 'exportExcel'])
         ->name('performance-logs.export.excel');
+
+    Route::get('performance-analysis', [App\Http\Controllers\PerformanceAnalysisController::class, 'index'])
+        ->name('performance.analysis');
 
 });
 

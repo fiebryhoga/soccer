@@ -13,23 +13,18 @@ class ClubAndPlayerSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Buat Klub Persebaya
-        // Menggunakan updateOrCreate agar jika dijalankan ulang tidak duplikat
         $club = Club::updateOrCreate(
             ['name' => 'Persebaya'],
             ['name' => 'Persebaya']
         );
 
-        // 2. Daftar Pemain Persebaya
         $players = [
-            // Center Back (CB)
             ['position' => 'CB', 'position_number' => 44, 'name' => 'Gustavo Fernandes'],
             ['position' => 'CB', 'position_number' => 24, 'name' => 'Leo Lelis'],
             ['position' => 'CB', 'position_number' => 18, 'name' => 'Rendy May'],
             ['position' => 'CB', 'position_number' => 5, 'name' => 'Risto Mitrevski'],
             ['position' => 'CB', 'position_number' => 66, 'name' => 'Sheva Kardanu'],
             
-            // Full Back (FB)
             ['position' => 'FB', 'position_number' => 2, 'name' => 'Catur Pamungkas'],
             ['position' => 'FB', 'position_number' => 78, 'name' => 'Ilham Mujtaba'],
             ['position' => 'FB', 'position_number' => 17, 'name' => 'Jefferson Silva'],

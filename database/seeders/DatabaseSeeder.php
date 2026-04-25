@@ -13,8 +13,8 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             AdminSeeder::class,
-            ClubAndPlayerSeeder::class,
-            BenchmarkSeeder::class,
+            // ClubAndPlayerSeeder::class,
+            // BenchmarkSeeder::class,
         ]);
     }
 }

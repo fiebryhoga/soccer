@@ -39,6 +39,12 @@ class BenchmarkController extends Controller
         return redirect()->route('benchmarks.index')->with('message', 'Benchmark berhasil dibuat.');
     }
 
+    public function show(Benchmark $benchmark) {
+        return inertia('Benchmarks/Show', [
+            'benchmark' => $benchmark
+        ]);
+    }
+
     public function edit(Benchmark $benchmark) {
         return inertia('Benchmarks/Form', [
             'benchmark' => $benchmark
@@ -60,6 +66,20 @@ class BenchmarkController extends Controller
         Activity::log('memperbarui standar benchmark Tim', $benchmark->name, 'update');
 
         return redirect()->route('benchmarks.index')->with('message', 'Benchmark berhasil diperbarui.');
+    }
+
+    public function duplicate(Benchmark $benchmark) {
+        // Replicate akan menyalin seluruh field kecuali ID dan Timestamps
+        $newBenchmark = $benchmark->replicate();
+        
+        // Ubah namanya sesuai permintaan
+        $newBenchmark->name = 'Salinan ' . $benchmark->name;
+        $newBenchmark->save();
+    
+        // Log Aktivitas
+        Activity::log('menduplikasi standar benchmark Tim', $newBenchmark->name, 'create');
+    
+        return redirect()->back()->with('message', 'Benchmark berhasil diduplikasi.');
     }
 
     public function destroy(Benchmark $benchmark) {
