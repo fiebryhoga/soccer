@@ -101,6 +101,11 @@ Route::middleware('auth')->group(function () {
 
     Route::get('performance-analysis', [App\Http\Controllers\PerformanceAnalysisController::class, 'index'])
         ->name('performance.analysis');
+    
+    Route::get('/analysis/strain-monotony', [PerformanceAnalysisController::class, 'strainMonotony'])->name('analysis.strain');
+
+    Route::get('/analysis/strain-monotony', [PerformanceAnalysisController::class, 'strainMonotony'])->name('analysis.strain');
+    Route::get('/analysis/acwr', [PerformanceAnalysisController::class, 'acwr'])->name('analysis.acwr'); // <--- TAMBAHKAN INI
 
 });
 

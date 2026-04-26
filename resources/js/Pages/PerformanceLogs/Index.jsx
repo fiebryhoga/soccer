@@ -5,7 +5,7 @@ import { Head, router } from '@inertiajs/react';
 import { CalendarDays, Filter, Check, Edit2, Search, Calendar as CalendarIcon } from 'lucide-react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import TimelineCard from './Partials/TimelineCard';
-import SelectDropdown from '@/Components/ui/SelectDropdown'; // Pastikan import ini ada
+import SelectDropdown from '@/Components/ui/SelectDropdown';
 
 export default function PerformanceLogIndex({ auth, calendar, season_start_date }) {
     
@@ -20,14 +20,16 @@ export default function PerformanceLogIndex({ auth, calendar, season_start_date 
         return new Date(dateString).toLocaleDateString('id-ID', options);
     };
 
-    // Filter Kalender berdasarkan Pencarian dan Bulan
+    // Filter Kalender berdasarkan Pencarian, Tag, Bulan, dsb.
     const filteredCalendar = useMemo(() => {
         if (!calendar) return [];
         return calendar.filter(day => {
+            const query = searchQuery.toLowerCase();
             const matchesSearch = 
-                (day.title?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                (formatDate(day.date).toLowerCase().includes(searchQuery.toLowerCase())) ||
-                (day.type.toLowerCase().includes(searchQuery.toLowerCase()));
+                (day.title?.toLowerCase().includes(query)) ||
+                (formatDate(day.date).toLowerCase().includes(query)) ||
+                (day.type.toLowerCase().includes(query)) ||
+                (day.tag?.toLowerCase().includes(query)); // Termasuk mencari berdasarkan tag (MD-1, dst)
 
             let matchesMonth = true;
             if (filterMonth !== 'all') {
@@ -51,7 +53,6 @@ export default function PerformanceLogIndex({ auth, calendar, season_start_date 
         });
         const opts = Array.from(months).map(m => JSON.parse(m)).sort((a,b) => a.val - b.val);
         
-        // Format object array yang dibutuhkan oleh SelectDropdown
         return [
             { value: 'all', label: 'Semua Bulan' }, 
             ...opts.map(o => ({ value: o.val.toString(), label: o.label }))
@@ -66,24 +67,18 @@ export default function PerformanceLogIndex({ auth, calendar, season_start_date 
         });
     };
 
-    const updateAgenda = (date, type) => {
-        router.post(route('performance-logs.store'), { date, type }, {
-            preserveScroll: true,
-        });
-    };
-
     return (
         <AuthenticatedLayout 
             user={auth.user} 
             headerTitle="Kalender Performa" 
-            headerDescription="Kelola jadwal tim dan pantau log metrik fisik harian dalam 14 hari ke depan."
+            headerDescription="Kelola jadwal tim dan pantau log metrik fisik harian."
         >
             <Head title="Jadwal & Log Performa" />
 
             <div className="w-full pb-20 space-y-6">
                 
                 {/* CONTROL TOOLBAR KECIL & RAPI */}
-                <div className="bg-white dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 shadow-sm flex flex-col xl:flex-row gap-4 items-center justify-between z-20 relative">
+                <div className="bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 shadow-sm flex flex-col xl:flex-row gap-4 items-center justify-between z-20 relative">
                     
                     {/* Kiri: Pencarian & Pilihan Bulan */}
                     <div className="flex w-full xl:w-auto flex-col sm:flex-row gap-3 flex-1">
@@ -93,21 +88,20 @@ export default function PerformanceLogIndex({ auth, calendar, season_start_date 
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={14} strokeWidth={2.5} />
                             <input
                                 type="text"
-                                placeholder="Cari sesi atau tanggal..."
+                                placeholder="Cari sesi, tanggal, atau tag (MD-1)..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-semibold text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 py-2.5 pl-9 pr-3 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-colors"
+                                className="w-full bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-semibold text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 py-2 pl-9 pr-3 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors"
                             />
                         </div>
                         
-                        {/* INI DIA DROPDOWN CUSTOM UNTUK BULAN */}
-                        <div className="w-full sm:w-56">
+                        {/* DROPDOWN CUSTOM UNTUK BULAN */}
+                        <div className="w-full sm:w-56 relative z-30">
                             <SelectDropdown 
                                 value={filterMonth} 
                                 onChange={(e) => setFilterMonth(e.target.value)} 
                                 options={availableMonths}
                                 icon={Filter}
-                                className="py-2.5" // Menyesuaikan tinggi dengan input search
                             />
                         </div>
 
@@ -126,9 +120,9 @@ export default function PerformanceLogIndex({ auth, calendar, season_start_date 
                                     type="date" 
                                     value={tempDate}
                                     onChange={(e) => setTempDate(e.target.value)}
-                                    className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs font-mono font-bold rounded-lg py-2 px-3 focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100 outline-none"
+                                    className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs font-mono font-bold rounded-lg py-1.5 px-3 outline-none"
                                 />
-                                <button onClick={saveStartDate} className="p-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg hover:opacity-80 transition-opacity" title="Simpan">
+                                <button onClick={saveStartDate} className="p-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-md hover:opacity-80 transition-opacity" title="Simpan">
                                     <Check size={14} strokeWidth={3} />
                                 </button>
                             </div>
@@ -139,7 +133,7 @@ export default function PerformanceLogIndex({ auth, calendar, season_start_date 
                                 </span>
                                 <button 
                                     onClick={() => setIsEditingDate(true)}
-                                    className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors border border-zinc-200 dark:border-zinc-800"
+                                    className="p-1.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors border border-zinc-200 dark:border-zinc-800"
                                     title="Ubah Tanggal"
                                 >
                                     <Edit2 size={12} strokeWidth={2.5} />
@@ -150,9 +144,9 @@ export default function PerformanceLogIndex({ auth, calendar, season_start_date 
                 </div>
 
                 {/* TIMELINE LIST */}
-                <div className="pt-2">
+                <div className="pt-2 z-10 relative">
                     {!season_start_date ? (
-                        <div className="flex flex-col items-center justify-center py-24 border border-dashed border-zinc-300 dark:border-zinc-800 rounded-xl text-zinc-400 bg-zinc-50/50 dark:bg-[#09090b]">
+                        <div className="flex flex-col items-center justify-center py-24 border border-dashed border-zinc-300 dark:border-zinc-800 rounded-xl text-zinc-400 bg-zinc-50/50 dark:bg-[#0a0a0a]">
                             <div className="p-4 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 mb-4 shadow-sm">
                                 <CalendarDays size={28} strokeWidth={2} className="text-zinc-400" />
                             </div>
@@ -160,10 +154,10 @@ export default function PerformanceLogIndex({ auth, calendar, season_start_date 
                             <p className="text-xs font-medium text-zinc-500">Atur tanggal "Awal Musim" di toolbar atas untuk menghasilkan jadwal otomatis.</p>
                         </div>
                     ) : filteredCalendar.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center bg-white dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                        <div className="flex flex-col items-center justify-center py-20 text-center bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
                             <Search size={32} className="text-zinc-300 dark:text-zinc-700 mb-4" />
                             <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Tidak ada sesi ditemukan</h3>
-                            <p className="text-xs text-zinc-500 mt-1">Coba sesuaikan pencarian atau filter bulan Anda.</p>
+                            <p className="text-xs text-zinc-500 mt-1">Coba sesuaikan kata kunci pencarian atau filter bulan Anda.</p>
                             <button 
                                 onClick={() => {setSearchQuery(''); setFilterMonth('all');}}
                                 className="mt-4 px-4 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-lg text-xs font-bold hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors shadow-sm"
@@ -177,7 +171,6 @@ export default function PerformanceLogIndex({ auth, calendar, season_start_date 
                                 <TimelineCard 
                                     key={day.date} 
                                     day={day} 
-                                    updateAgenda={updateAgenda} 
                                     isLast={index === filteredCalendar.length - 1}
                                 />
                             ))}

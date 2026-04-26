@@ -7,18 +7,24 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { FIXED_EXCEL_COLUMNS } from '@/Constants/metrics';
 import ConfigurationHeader from './Partials/ConfigurationHeader';
 import MetricsTable from './Partials/MetricsTable';
-import SessionAnalysis from './Partials/SessionAnalysis'; // <--- IMPORT KOMPONEN BARU
+import SessionAnalysis from './Partials/SessionAnalysis';
 
 const POSITION_ORDER = { 'CB': 1, 'FB': 2, 'MF': 3, 'WF': 4, 'FW': 5 };
 
 export default function PerformanceLogShow({ auth, log, club, players, existing_metrics, benchmarks }) {
     
-    // 1. Pengurutan dan Mapping Data Pemain
     const sortedPlayersData = useMemo(() => {
         let mappedData = players.map(player => {
             const existing = existing_metrics[player.id];
             let metricsData = {};
             FIXED_EXCEL_COLUMNS.forEach(col => { metricsData[col.id] = existing?.metrics?.[col.id] || ''; });
+            
+            // Simpan status centang ke dalam JSON
+            metricsData['selected'] = existing?.metrics?.selected ?? true;
+            metricsData['selected_hr4'] = existing?.metrics?.selected_hr4 ?? true;
+            metricsData['selected_hr5'] = existing?.metrics?.selected_hr5 ?? true;
+            metricsData['selected_pl'] = existing?.metrics?.selected_pl ?? true;
+
             return {
                 player_id: player.id,
                 position_number: player.position_number,
@@ -27,15 +33,19 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
                 historical_highest: player.highest_metrics || {}, 
                 metrics: metricsData,
                 sort_order: existing?.sort_order ?? null,
-                selected: true
+                
+                // State UI
+                selected: existing?.metrics?.selected ?? true,
+                selected_hr4: existing?.metrics?.selected_hr4 ?? true,
+                selected_hr5: existing?.metrics?.selected_hr5 ?? true,
+                selected_pl: existing?.metrics?.selected_pl ?? true,
             };
         });
 
         mappedData.sort((a, b) => {
             if (a.sort_order !== null && b.sort_order !== null) return a.sort_order - b.sort_order;
-            const posA = POSITION_ORDER[a.position?.toUpperCase()] || 99;
-            const posB = POSITION_ORDER[b.position?.toUpperCase()] || 99;
-            if (posA !== posB) return posA - posB;
+            const posOrder = { 'CB': 1, 'FB': 2, 'MF': 3, 'WF': 4, 'FW': 5 };
+            if (posOrder[a.position] !== posOrder[b.position]) return posOrder[a.position] - posOrder[b.position];
             return a.name.localeCompare(b.name);
         });
 
@@ -61,22 +71,12 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
 
         if (colId === 'max_velocity') {
             let targetHighest = parseFloat(playerHighest?.['highest_velocity']) || parseFloat(playerHighest?.['max_velocity']) || 0;
-            if (targetHighest === 0) {
-                 if (position && activeBenchmark?.metrics?.[colId]?.[position]) {
-                     targetHighest = activeBenchmark.metrics[colId][position];
-                 } else if (activeBenchmark?.metrics?.[colId]) {
-                     if (typeof activeBenchmark.metrics[colId] === 'number') {
-                         targetHighest = activeBenchmark.metrics[colId];
-                     } else {
-                         const vals = Object.values(activeBenchmark.metrics[colId]);
-                         targetHighest = vals.reduce((a,b)=>a+b,0) / vals.length || 100;
-                     }
-                 } else { targetHighest = 100; }
-            }
+            if (targetHighest === 0) targetHighest = 100;
             return ((numValue / targetHighest) * 100).toFixed(1);
         }
         
         let targetValue = 100;
+        
         if (activeBenchmark?.metrics?.[colId]) {
              if (position && activeBenchmark.metrics[colId][position]) {
                  targetValue = activeBenchmark.metrics[colId][position]; 
@@ -87,48 +87,93 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
                  targetValue = vals.reduce((a,b)=>a+b,0) / vals.length || 100;
              }
         }
-        return ((numValue / targetValue) * 100).toFixed(1);
+        
+        return ((numValue / Math.max(targetValue, 0.01)) * 100).toFixed(1);
     };
 
     const getAutoCalculatedValue = (player, colId) => {
-        const metrics = player.metrics;
-        if (colId === 'hir_19_8_kmh') {
-            const hir18 = parseFloat(metrics['hir_18_kmh']) || 0;
-            const hsr21 = parseFloat(metrics['hsr_21_kmh']) || 0;
-            return (hir18 + hsr21).toFixed(1);
-        } 
         if (colId === 'total_18kmh') {
-            const sprint = parseFloat(metrics['sprint_distance']) || 0;
-            const hir19 = parseFloat(getAutoCalculatedValue(player, 'hir_19_8_kmh')) || 0;
-            return (sprint + hir19).toFixed(1);
+            const hir = parseFloat(player.metrics?.hir_18_24_kmh) || 0;
+            const sprint = parseFloat(player.metrics?.sprint_distance) || 0;
+            
+            const total = hir + sprint;
+            
+            if (total === 0) return '-';
+            return Number.isInteger(total) ? total.toString() : total.toFixed(1);
         }
+        
+        // KALKULASI HIGHEST VELOCITY
         if (colId === 'highest_velocity') {
-            const currentMax = parseFloat(metrics['max_velocity']) || 0;
-            const historicalMax = parseFloat(player.historical_highest?.['highest_velocity']) || parseFloat(player.historical_highest?.['max_velocity']) || 0;
-            return Math.max(currentMax, historicalMax).toFixed(2);
+            const currentMax = parseFloat(player.metrics?.max_velocity) || 0;
+            const historicalMax = parseFloat(player.historical_highest?.highest_velocity) || parseFloat(player.historical_highest?.max_velocity) || 0;
+            
+            const max = Math.max(currentMax, historicalMax);
+            return max > 0 ? max.toFixed(2) : '-';
         }
-        return metrics[colId];
+        
+        return player.metrics?.[colId] ?? '';
+    };
+
+    const timeToSeconds = (timeStr) => {
+        if(!timeStr || typeof timeStr !== 'string' || !timeStr.includes('.')) return null;
+        const parts = timeStr.split('.').map(Number);
+        if(parts.length === 3) return parts[0]*3600 + parts[1]*60 + parts[2];
+        if(parts.length === 2) return parts[0]*60 + parts[1];
+        return null;
+    };
+
+    const secondsToTime = (totalSeconds) => {
+        if(totalSeconds === null || isNaN(totalSeconds)) return '-';
+        const h = Math.floor(totalSeconds / 3600);
+        const m = Math.floor((totalSeconds % 3600) / 60);
+        const s = Math.round(totalSeconds % 60);
+        return `${String(h).padStart(2, '0')}.${String(m).padStart(2, '0')}.${String(s).padStart(2, '0')}`;
     };
 
     const getColumnAverage = (colId) => {
-        // Kecualikan Total Duration sesuai permintaan
         if (colId === 'total_duration') return '-';
-    
-        // Filter hanya pemain yang dicentang
-        const selectedPlayers = data.players_data.filter(p => p.selected);
+
+        let targetPlayers = data.players_data;
         
-        // Jika tidak ada yang dipilih, jangan tampilkan angka
-        if (selectedPlayers.length === 0) return '-';
-    
+        // PENGELOMPOKKAN CUSTOM SELECT
+        const distanceGroup = ['total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh'];
+        const hr4Group = ['hr_band_4_dist', 'hr_band_4_dur'];
+        const hr5Group = ['hr_band_5_dist', 'hr_band_5_dur'];
+        const plGroup = ['player_load'];
+
+        if (distanceGroup.includes(colId)) targetPlayers = data.players_data.filter(p => p.selected);
+        else if (hr4Group.includes(colId)) targetPlayers = data.players_data.filter(p => p.selected_hr4);
+        else if (hr5Group.includes(colId)) targetPlayers = data.players_data.filter(p => p.selected_hr5);
+        else if (plGroup.includes(colId)) targetPlayers = data.players_data.filter(p => p.selected_pl);
+        // Jika Accels, Decels, Max Vel, Highest (All Group) -> Menggunakan semua pemain (tidak di-filter)
+
+        if (targetPlayers.length === 0) return '-';
+
+        // LOGIKA KHUSUS: RATA-RATA WAKTU (DURASI)
+        if (colId === 'hr_band_4_dur' || colId === 'hr_band_5_dur') {
+            let sumSec = 0; let count = 0;
+            targetPlayers.forEach(p => {
+                const val = getAutoCalculatedValue(p, colId);
+                const sec = timeToSeconds(val);
+                if (sec !== null) { sumSec += sec; count++; }
+            });
+            return count > 0 ? secondsToTime(sumSec / count) : '-';
+        }
+
+        // LOGIKA STANDAR: RATA-RATA ANGKA
         let sum = 0, count = 0;
-        selectedPlayers.forEach(p => {
+        targetPlayers.forEach(p => {
             const val = parseFloat(getAutoCalculatedValue(p, colId));
-            if (!isNaN(val) && val !== '') { 
-                sum += val; 
-                count++; 
+            if (!isNaN(val) && getAutoCalculatedValue(p, colId) !== '') { 
+                sum += val; count++; 
             }
         });
-        return count > 0 ? (sum / count).toFixed(1) : 0;
+        
+        if (count === 0) return '-';
+        const avg = sum / count;
+        
+        if (['max_velocity', 'highest_velocity'].includes(colId)) return avg.toFixed(2);
+        return Number.isInteger(avg) ? avg.toString() : avg.toFixed(1);
     };
 
     // 4. Handlers Input

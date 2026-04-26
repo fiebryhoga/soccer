@@ -1,37 +1,36 @@
 // resources/js/Constants/metrics.js
 
 export const FIXED_EXCEL_COLUMNS = [
-    { id: 'total_duration', label: 'Total Duration' },
-    { id: 'total_distance', label: 'Total Distance (m)', hasPercent: true },
+    { id: 'total_duration', label: 'Total Duration', hasPercent: false },
+    { id: 'total_distance', label: 'Total Distance', hasPercent: true },
     { id: 'dist_per_min', label: 'Distance/min', hasPercent: true },
-    
-    // Kelompok Distance (m) dengan Sub-subnya
-    { id: 'hir_18_kmh', label: 'HIR 18 Km/h~', hasPercent: true },
-    { id: 'hir_19_8_kmh', label: 'HIR >19.8 Km/h-', hasPercent: true },
-    { id: 'hsr_21_kmh', label: 'HSR 21 km/h~', hasPercent: true },
-    { id: 'sprint_distance', label: 'SPRINT 24.52 km/h~', hasPercent: true },
-    { id: 'total_18kmh', label: 'Total 18Km/h+', hasPercent: true },
-
-    // Kelompok Lainnya
-    { id: 'accels', label: 'Accels >3m/s/s' },
-    { id: 'decels', label: 'Decels >3m/s/s' },
-    { id: 'hr_band_4_dist', label: 'Heart Rate Band 4 Total Distance (m)' },
-    { id: 'hr_band_4_dur', label: 'Heart Rate Band 4 Total Duration' },
-    { id: 'hr_band_5_dist', label: 'Heart Rate Band 5 Total Distance (m)' },
-    { id: 'hr_band_5_dur', label: 'Heart Rate Band 5 Total Duration' },
-    
-    // Kelompok Velocity
-    { id: 'max_velocity', label: 'Max Velocity (km/h)', hasPercent: true },
-    { id: 'highest_velocity', label: 'Highest Of All Session (km/h)' },
-    
-    { id: 'player_load', label: 'Total Player Load' },
+    { id: 'hir_18_24_kmh', label: 'HIR 18-24.51', hasPercent: true },
+    { id: 'sprint_distance', label: 'SPRINT 24.52~', hasPercent: true },
+    { id: 'total_18kmh', label: 'Total 18kmh+', hasPercent: true }, // Auto calculated
+    { id: 'accels', label: 'Accels >3', hasPercent: false },
+    { id: 'decels', label: 'Decels >3', hasPercent: false },
+    { id: 'hr_band_4_dist', label: 'HR Band 4 Dist', hasPercent: false },
+    { id: 'hr_band_4_dur', label: 'HR Band 4 Dur', hasPercent: false },
+    { id: 'hr_band_5_dist', label: 'HR Band 5 Dist', hasPercent: false },
+    { id: 'hr_band_5_dur', label: 'HR Band 5 Dur', hasPercent: false },
+    { id: 'max_velocity', label: 'Max Velocity', hasPercent: true },
+    { id: 'highest_velocity', label: 'Highest Session', hasPercent: false }, // Auto calculated
+    { id: 'player_load', label: 'Total Player Load', hasPercent: true },
 ];
 
-export const MASTER_METRICS = FIXED_EXCEL_COLUMNS;
-
-// Filter metrics yang TIDAK dipakai di form Benchmark
-export const BENCHMARK_METRICS = FIXED_EXCEL_COLUMNS.filter(m => 
-    !['max_velocity', 'highest_velocity', 'total_duration'].includes(m.id)
-);
+export const BENCHMARK_COLUMNS = [
+    { id: 'total_distance', label: 'DISTANCE' },
+    { id: 'dist_per_min', label: 'DIST/MIN' },
+    { id: 'hir_18_24_kmh', label: 'HIR' },
+    { id: 'sprint_distance', label: 'SPRINT' }, // <-- Menggantikan HSR
+    { id: 'total_18kmh', label: 'TOTAL' },      // <-- Menggantikan SPRINT
+    { id: 'accels', label: 'ACC' },
+    { id: 'decels', label: 'DCC' },
+    { id: 'hr_band_4_dist', label: 'DIST HR 4' },
+    { id: 'hr_band_4_dur', label: 'HR BAND 4' },
+    { id: 'hr_band_5_dist', label: 'DIST HR 5' },
+    { id: 'hr_band_5_dur', label: 'HR BAND 5' },
+    { id: 'player_load', label: 'PL' }
+];
 
 export const POSITIONS = ['CB', 'FB', 'MF', 'WF', 'FW'];

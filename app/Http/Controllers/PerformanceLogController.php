@@ -87,6 +87,7 @@ class PerformanceLogController extends Controller
         $request->validate([
             'date' => 'required|date',
             'type' => 'required|in:off,training,match',
+            'tag' => 'nullable|string|max:20', // <--- TAMBAH VALIDASI TAG
         ]);
 
         $club = Club::firstOrFail();
@@ -100,24 +101,27 @@ class PerformanceLogController extends Controller
             if ($existingLog && $existingLog->title) {
                 $title = $existingLog->title;
             } else {
-                // AUTO GENERATE TITLE
                 if ($request->type === 'training') {
+                    // 1. Cari berdasarkan kata "Session %" BUKAN "Training %"
                     $lastTraining = PerformanceLog::where('club_id', $club->id)
                         ->where('type', 'training')
                         ->whereNotNull('title')
-                        ->where('title', 'like', 'Training %')
-                        ->orderBy('date', 'desc')
+                        ->where('title', 'like', 'Session %') // <--- UBAH DI SINI
+                        ->orderBy('created_at', 'desc') // Gunakan created_at agar selalu dapat yang terbaru dibuat
                         ->first();
 
                     $nextSeries = 1;
                     if ($lastTraining) {
-                        preg_match('/Training (\d+) -/', $lastTraining->title, $matches);
+                        // 2. Ambil angka setelah kata "Session "
+                        preg_match('/Session (\d+)/', $lastTraining->title, $matches); // <--- UBAH DI SINI
                         if (isset($matches[1])) {
                             $nextSeries = intval($matches[1]) + 1;
                         }
                     }
+                    
+                    // 3. Format jadi 3 digit (001, 002, 003, dst)
                     $seriesString = str_pad($nextSeries, 3, '0', STR_PAD_LEFT);
-                    $title = "Training {$seriesString}";
+                    $title = "Session {$seriesString}";
                 } else if ($request->type === 'match') {
                     $title = "Match VS ...";
                 }
@@ -132,6 +136,7 @@ class PerformanceLogController extends Controller
             [
                 'type' => $request->type,
                 'title' => $title, 
+                'tag' => $request->type !== 'off' ? $request->tag : null,
             ]
         );
 
@@ -304,40 +309,29 @@ class PerformanceLogController extends Controller
     // ==========================================
     private function calculatePercentage($colId, $rawValue, $position, $activeBenchmark, $playerHighest)
     {
-        if ($rawValue === null || $rawValue === '' || !is_numeric($rawValue)) return 0;
+        if ($rawValue === null || $rawValue === '-' || $rawValue === '' || !is_numeric($rawValue)) return 0;
         $numValue = floatval($rawValue);
 
         if ($colId === 'max_velocity') {
             $targetHighest = floatval($playerHighest['highest_velocity'] ?? $playerHighest['max_velocity'] ?? 0);
-            
-            if ($targetHighest == 0) {
-                 if ($position && isset($activeBenchmark['metrics'][$colId][$position])) {
-                     $targetHighest = $activeBenchmark['metrics'][$colId][$position];
-                 } elseif (isset($activeBenchmark['metrics'][$colId])) {
-                     if (is_numeric($activeBenchmark['metrics'][$colId])) {
-                         $targetHighest = $activeBenchmark['metrics'][$colId];
-                     } else {
-                         $vals = array_values($activeBenchmark['metrics'][$colId]);
-                         $targetHighest = count($vals) > 0 ? array_sum($vals) / count($vals) : 100;
-                     }
-                 } else { 
-                     $targetHighest = 100; 
-                 }
-            }
+            if ($targetHighest == 0) $targetHighest = 100; 
             return number_format(($numValue / max($targetHighest, 0.01)) * 100, 1, '.', '');
         }
         
         $targetValue = 100;
+        
+        // LANGSUNG COCOKKAN KARENA ID BENCHMARK SUDAH IDENTIK DENGAN ID METRIK
         if (isset($activeBenchmark['metrics'][$colId])) {
              if ($position && isset($activeBenchmark['metrics'][$colId][$position])) {
-                 $targetValue = $activeBenchmark['metrics'][$colId][$position]; 
+                 $targetValue = floatval($activeBenchmark['metrics'][$colId][$position]); 
              } elseif (is_numeric($activeBenchmark['metrics'][$colId])) {
-                 $targetValue = $activeBenchmark['metrics'][$colId]; 
+                 $targetValue = floatval($activeBenchmark['metrics'][$colId]); 
              } elseif (!$position) {
                  $vals = array_values($activeBenchmark['metrics'][$colId]);
                  $targetValue = count($vals) > 0 ? array_sum($vals) / count($vals) : 100;
              }
         }
+        
         return number_format(($numValue / max($targetValue, 0.01)) * 100, 1, '.', '');
     }
 
