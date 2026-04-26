@@ -192,16 +192,26 @@ class PerformanceAnalysisController extends Controller
 
         $comparisonData = $logs->map(function($log) use ($players) {
             $metrics = PlayerMetric::where('performance_log_id', $log->id)->get();
-            // Gunakan fungsi calculateTeamAverage yang sudah kita buat sebelumnya di controller ini
+            
             return [
                 'id' => $log->id,
                 'title' => $log->title,
                 'date' => $log->date,
                 'tag' => $log->tag,
                 'averages' => $this->calculateTeamAverageForSession($players, $metrics, $log->benchmark, [
-                    'total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 
-                    'total_18kmh', 'accels', 'decels', 'hr_band_4_dist', 'hr_band_5_dist',
-                    'max_velocity', 'player_load'
+                    'total_distance', 
+                    'dist_per_min', 
+                    'hir_18_24_kmh', 
+                    'sprint_distance', 
+                    'total_18kmh', 
+                    'accels', 
+                    'decels', 
+                    'hr_band_4_dist', 
+                    'hr_band_4_dur', // <-- WAJIB ADA DI SINI
+                    'hr_band_5_dist', 
+                    'hr_band_5_dur', // <-- WAJIB ADA DI SINI
+                    'max_velocity', 
+                    'player_load'
                 ])
             ];
         });

@@ -1,58 +1,78 @@
+// resources/js/Pages/PerformanceLogs/Analysis/Partials/PlayerLoadComparisonChart.jsx
+
 import React from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 export default function PlayerLoadComparisonChart({ data }) {
-    const chartData = data.map(s => {
-        const load = parseFloat(s.averages.player_load) || 0;
-        // Hitung persentase jika tersedia, jika tidak anggap proporsional (misal target 100%)
-        const percentStr = s.averages.player_load_percent || '0';
-        const percent = parseFloat(percentStr.replace('%', '')) || 0;
-        
-        // Asumsi: Target Match Day = 100%. Kita hitung selisihnya untuk divisualisasikan.
-        // Jika persentase melebihi 100%, selisihnya 0 (karena sudah melampaui target).
-        const diffToMatchDay = percent > 0 && percent < 100 ? (100 - percent) : 0;
-
-        return {
-            name: s.title,
-            load: load,
-            percent: percent,
-            diff: diffToMatchDay,
-            isOverTarget: percent > 100
-        };
-    });
+    
+    const chartData = data.map(s => ({
+        name: s.title,
+        load: parseFloat(s.averages.player_load) || 0,
+        tooltipLabel: `${s.title} (${s.date})`
+    }));
 
     return (
-        <div className="bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm">
-            <div className="mb-8 border-b border-zinc-100 dark:border-zinc-800/60 pb-4">
-                <h3 className="text-lg font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-tight">Player Load</h3>
+        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-5 lg:p-6 rounded-xl shadow-sm transition-colors relative overflow-hidden">
+            
+            {/* Ambient Background Glow (Premium Effect) */}
+            <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-teal-500/5 dark:bg-teal-500/10 blur-3xl rounded-full pointer-events-none"></div>
+
+            <div className="mb-6 flex flex-col relative z-10">
+                <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-tight">
+                    PLAYER LOAD <span className="text-zinc-400 dark:text-zinc-600 font-bold ml-1">ANALYSIS</span>
+                </h3>
                 <p className="text-xs font-semibold text-zinc-500 mt-1">
-                    Akumulasi beban mekanis sesi (<span className="text-teal-500">Player Load</span>) dan persentasenya terhadap Match Day.
+                    Perbandingan akumulasi beban mekanis sesi (<span className="text-teal-600 dark:text-teal-400">Player Load</span>) yang mencerminkan total volume kerja.
                 </p>
             </div>
 
-            <div className="h-[400px] w-full">
+            <div className="h-[400px] w-full relative z-10">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.15} />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#71717a', fontWeight: 'bold' }} dy={10} />
+                    <BarChart data={chartData} margin={{ top: 20, right: 0, bottom: 20, left: -20 }}>
                         
-                        {/* Kita gunakan dua sumbu agar Load (angka absolut) dan Persentase bisa berdampingan jika diperlukan */}
-                        <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#a1a1aa' }} dx={-10} />
+                        {/* DEFINISI GRADIENT WARNA */}
+                        <defs>
+                            <linearGradient id="colorLoad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#0d9488" stopOpacity={0.9}/> {/* teal-600 */}
+                                <stop offset="95%" stopColor="#5eead4" stopOpacity={0.3}/> {/* teal-300 */}
+                            </linearGradient>
+                        </defs>
+
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b" opacity={0.15} />
                         
-                        <Tooltip 
-                            contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', fontSize: '12px' }}
-                            itemStyle={{ fontWeight: 'bold' }}
-                            formatter={(value, name, props) => {
-                                // Kustomisasi Tooltip agar menampilkan nilai aktual dengan benar
-                                if (name === 'Load Aktual' || name === 'Load Ekstra (>100%)') return [value.toFixed(1), name];
-                                if (name === '% Match Day Target') return [`${props.payload.percent.toFixed(1)}%`, 'Percent of Match Day'];
-                                return [value, name];
-                            }}
+                        {/* X-Axis Miring agar teks sesi yang panjang tidak tertumpuk */}
+                        <XAxis 
+                            dataKey="name" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fontSize: 10, fill: '#71717a', fontWeight: 'bold' }} 
+                            angle={-20} 
+                            textAnchor="end" 
+                            height={60} 
+                            dy={10} 
                         />
-                        <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 'bold', paddingTop: '20px' }} />
                         
-                        {/* Batang utama: Nilai aktual Player Load */}
-                        <Bar yAxisId="left" dataKey="load" name="Load Aktual" stackId="a" fill="#14b8a6" barSize={50} radius={[4, 4, 0, 0]}/>
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#a1a1aa' }} dx={-10} />
+                        
+                        {/* Tooltip Presisi 2 Desimal */}
+                        <Tooltip 
+                            contentStyle={{ backgroundColor: '#09090b', borderColor: '#27272a', borderRadius: '8px', color: '#f4f4f5', fontSize: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)' }}
+                            itemStyle={{ fontWeight: 'bold' }}
+                            labelFormatter={(label, payload) => payload?.[0]?.payload?.tooltipLabel || label}
+                            formatter={(value) => [Number(value).toFixed(2), 'Total Load']} 
+                            cursor={{ fill: '#3f3f46', opacity: 0.1 }}
+                        />
+                        
+                        <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '11px', fontWeight: 'bold', color: '#71717a' }} />
+                        
+                        {/* Bar Gradient Player Load */}
+                        <Bar 
+                            dataKey="load" 
+                            name="Player Load (AU)" 
+                            fill="url(#colorLoad)" 
+                            radius={[6, 6, 0, 0]} 
+                            barSize={40} 
+                        />
                         
                     </BarChart>
                 </ResponsiveContainer>
