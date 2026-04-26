@@ -35,7 +35,7 @@ export default function Index({ auth, benchmarks }) {
             <div className="w-full pb-12 space-y-6">
                 
                 {/* Header Action - Monochrome Premium */}
-                <div className="sticky top-0 z-20 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-xl p-5 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm transition-all">
+                <div className="sticky top-0 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-xl p-5 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm transition-all">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[1rem] text-zinc-900 dark:text-zinc-100">
                             <Activity size={22} strokeWidth={2.5} />

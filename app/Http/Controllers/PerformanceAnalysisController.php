@@ -33,8 +33,9 @@ class PerformanceAnalysisController extends Controller
 
         $columnsToAverage = [
             'total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 
-            'total_18kmh', 'accels', 'decels', 'hr_band_4_dist', 'hr_band_5_dist',
-            'max_velocity', 'highest_velocity', 'player_load'
+            'total_18kmh', 'accels', 'decels', 'hr_band_4_dist', 'hr_band_4_dur', // <-- Tambahkan
+            'hr_band_5_dist', 'hr_band_5_dur', // <-- Tambahkan
+            'max_velocity', 'player_load'
         ];
 
         $weeksData = [];
@@ -102,10 +103,15 @@ class PerformanceAnalysisController extends Controller
         $endDateParam = $request->input('end_date', now()->toDateString());
         $startDateParam = $request->input('start_date', Carbon::parse($endDateParam)->subDays(14)->toDateString());
 
-        // LOGIKA BARU: Cari tanggal PALING AWAL dari tabel log untuk pondasi Chronic yang akurat!
-        $firstLog = PerformanceLog::where('club_id', $club->id)->orderBy('date', 'asc')->first();
+        // LOGIKA BARU YANG SUDAH DIPERBAIKI: 
+        // Cari tanggal PALING AWAL, TAPI abaikan yang statusnya 'off'
+        $firstLog = PerformanceLog::where('club_id', $club->id)
+            ->where('type', '!=', 'off') // <-- INI KUNCI PERBAIKANNYA
+            ->orderBy('date', 'asc')
+            ->first();
         
         $fetchStart = $firstLog ? Carbon::parse($firstLog->date) : Carbon::parse($startDateParam);
+        
         // Jaga-jaga jika filter end_date lebih lampau dari first log
         if ($fetchStart->gt(Carbon::parse($endDateParam))) {
             $fetchStart = Carbon::parse($startDateParam);
@@ -163,42 +169,94 @@ class PerformanceAnalysisController extends Controller
         ]);
     }
 
-    private function calculateTeamAverageForSession($players, $metrics, $benchmark, $columnsToAverage)
+    public function comparison(Request $request)
     {
-        $teamAverage = [];
-        $distanceGroup = ['total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh'];
-        $hr4Group = ['hr_band_4_dist'];
-        $hr5Group = ['hr_band_5_dist'];
-        $plGroup = ['player_load'];
+        $club = Club::first();
+        $sessionIds = $request->input('session_ids', []); // Array ID sesi yang dipilih manual
+        $tags = $request->input('tags', []); // Array tag yang dipilih (misal: MD-3)
 
-        $metricsByPlayer = $metrics->keyBy('player_id');
+        $query = PerformanceLog::with('benchmark')->where('club_id', $club->id)->where('type', '!=', 'off');
 
-        foreach ($columnsToAverage as $col) {
-            $sumVal = 0; $countVal = 0;
-            $sumPct = 0; $countPct = 0;
+        // Filter berdasarkan ID manual atau berdasarkan Tag
+        if (!empty($sessionIds)) {
+            $query->whereIn('id', $sessionIds);
+        } elseif (!empty($tags)) {
+            $query->whereIn('tag', $tags);
+        } else {
+            // Default: Ambil 3 sesi terakhir yang bukan OFF
+            $query->orderBy('date', 'desc')->limit(3);
+        }
 
-            foreach ($players as $player) {
-                $playerMetric = $metricsByPlayer->get($player->id);
-                if (!$playerMetric) continue;
+        $logs = $query->orderBy('date', 'asc')->get();
+        $players = Player::all();
 
-                $rawMetrics = is_array($playerMetric->metrics) ? $playerMetric->metrics : json_decode($playerMetric->metrics, true);
-                
-                // Validasi Group Centang (Custom Select)
-                $isValid = true;
-                if (in_array($col, $distanceGroup) && !($rawMetrics['selected'] ?? true)) $isValid = false;
-                elseif (in_array($col, $hr4Group) && !($rawMetrics['selected_hr4'] ?? true)) $isValid = false;
-                elseif (in_array($col, $hr5Group) && !($rawMetrics['selected_hr5'] ?? true)) $isValid = false;
-                elseif (in_array($col, $plGroup) && !($rawMetrics['selected_pl'] ?? true)) $isValid = false;
+        $comparisonData = $logs->map(function($log) use ($players) {
+            $metrics = PlayerMetric::where('performance_log_id', $log->id)->get();
+            // Gunakan fungsi calculateTeamAverage yang sudah kita buat sebelumnya di controller ini
+            return [
+                'id' => $log->id,
+                'title' => $log->title,
+                'date' => $log->date,
+                'tag' => $log->tag,
+                'averages' => $this->calculateTeamAverageForSession($players, $metrics, $log->benchmark, [
+                    'total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 
+                    'total_18kmh', 'accels', 'decels', 'hr_band_4_dist', 'hr_band_5_dist',
+                    'max_velocity', 'player_load'
+                ])
+            ];
+        });
 
-                if ($isValid) {
+        // Ambil list semua sesi untuk dropdown pilihan manual
+        $allSessions = PerformanceLog::where('club_id', $club->id)->where('type', '!=', 'off')->orderBy('date', 'desc')->get(['id', 'title', 'date', 'tag']);
+        // Ambil list unik tag yang tersedia
+        $availableTags = PerformanceLog::whereNotNull('tag')->distinct()->pluck('tag');
+
+        return inertia('PerformanceLogs/Analysis/Comparison', [
+            'comparisonData' => $comparisonData,
+            'allSessions' => $allSessions,
+            'availableTags' => $availableTags,
+        ]);
+    }
+
+    private function calculateTeamAverageForSession($players, $metrics, $benchmark, $columnsToAverage)
+{
+    $teamAverage = [];
+    $metricsByPlayer = $metrics->keyBy('player_id');
+
+    foreach ($columnsToAverage as $col) {
+        $sumVal = 0; $countVal = 0;
+        $sumSec = 0; $countSec = 0; // Untuk hitung waktu
+        $sumPct = 0; $countPct = 0;
+
+        $isDuration = str_contains($col, '_dur');
+
+        foreach ($players as $player) {
+            $playerMetric = $metricsByPlayer->get($player->id);
+            if (!$playerMetric) continue;
+
+            $rawMetrics = is_array($playerMetric->metrics) ? $playerMetric->metrics : json_decode($playerMetric->metrics, true);
+            
+            // Logika filter centang (tetap sama)
+            $isValid = $this->checkSelectionStatus($col, $rawMetrics);
+
+            if ($isValid) {
+                $val = $rawMetrics[$col] ?? null;
+
+                if ($isDuration) {
+                    $seconds = $this->timeToSeconds($val);
+                    if ($seconds !== null) {
+                        $sumSec += $seconds;
+                        $countSec++;
+                    }
+                } else {
                     $historicalHighest = is_array($player->highest_metrics) ? $player->highest_metrics : json_decode($player->highest_metrics, true) ?? [];
+                    $calculatedVal = $this->getAutoCalculatedValue($rawMetrics, $col, $historicalHighest);
                     
-                    $val = $this->getAutoCalculatedValue($rawMetrics, $col, $historicalHighest);
-                    if ($val !== '' && $val !== '-' && is_numeric($val)) {
-                        $sumVal += floatval($val);
+                    if ($calculatedVal !== '' && $calculatedVal !== '-' && is_numeric($calculatedVal)) {
+                        $sumVal += floatval($calculatedVal);
                         $countVal++;
 
-                        $pct = $this->calculatePercentage($col, $val, $player->position, $benchmark, $historicalHighest);
+                        $pct = $this->calculatePercentage($col, $calculatedVal, $player->position, $benchmark, $historicalHighest);
                         if (is_numeric($pct)) {
                             $sumPct += floatval($pct);
                             $countPct++;
@@ -206,15 +264,31 @@ class PerformanceAnalysisController extends Controller
                     }
                 }
             }
+        }
 
+        // Simpan hasil rata-rata
+        if ($isDuration) {
+            $teamAverage[$col] = $countSec > 0 ? $this->secondsToTime($sumSec / $countSec) : '00.00.00';
+        } else {
             $avgVal = $countVal > 0 ? ($sumVal / $countVal) : 0;
             $teamAverage[$col] = floor($avgVal) == $avgVal ? (string)$avgVal : number_format($avgVal, 1, '.', '');
-
+            
             $avgPct = $countPct > 0 ? ($sumPct / $countPct) : 0;
             $teamAverage[$col . '_percent'] = number_format($avgPct, 1, '.', '');
         }
+    }
 
-        return $teamAverage;
+    return $teamAverage;
+}
+
+    // Helper untuk cek centang agar kode lebih bersih
+    private function checkSelectionStatus($col, $rawMetrics) {
+        $distanceGroup = ['total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh'];
+        if (in_array($col, $distanceGroup)) return $rawMetrics['selected'] ?? true;
+        if (str_contains($col, 'hr_band_4')) return $rawMetrics['selected_hr4'] ?? true;
+        if (str_contains($col, 'hr_band_5')) return $rawMetrics['selected_hr5'] ?? true;
+        if ($col === 'player_load') return $rawMetrics['selected_pl'] ?? true;
+        return true; // Default untuk Accel/Decel/Vel
     }
 
     private function getAutoCalculatedValue($metrics, $colId, $playerHighest)
@@ -260,5 +334,21 @@ class PerformanceAnalysisController extends Controller
         }
         
         return number_format(($numValue / max($targetValue, 0.01)) * 100, 1, '.', '');
+    }
+
+    private function timeToSeconds($timeStr) {
+        if (!$timeStr || !str_contains($timeStr, '.')) return null;
+        $parts = array_map('intval', explode('.', $timeStr));
+        if (count($parts) == 3) return $parts[0] * 3600 + $parts[1] * 60 + $parts[2];
+        if (count($parts) == 2) return $parts[0] * 60 + $parts[1];
+        return null;
+    }
+    
+    private function secondsToTime($seconds) {
+        if ($seconds === null || $seconds <= 0) return '00.00.00';
+        $h = floor($seconds / 3600);
+        $m = floor(($seconds % 3600) / 60);
+        $s = round($seconds % 60);
+        return sprintf("%02d.%02d.%02d", $h, $m, $s);
     }
 }

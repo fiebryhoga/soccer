@@ -105,7 +105,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/analysis/strain-monotony', [PerformanceAnalysisController::class, 'strainMonotony'])->name('analysis.strain');
 
     Route::get('/analysis/strain-monotony', [PerformanceAnalysisController::class, 'strainMonotony'])->name('analysis.strain');
-    Route::get('/analysis/acwr', [PerformanceAnalysisController::class, 'acwr'])->name('analysis.acwr'); // <--- TAMBAHKAN INI
+    Route::get('/analysis/acwr', [PerformanceAnalysisController::class, 'acwr'])->name('analysis.acwr');
+    Route::get('/analysis/comparison', [PerformanceAnalysisController::class, 'comparison'])->name('analysis.comparison');
 
 });
 

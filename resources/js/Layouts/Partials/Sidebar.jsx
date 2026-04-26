@@ -46,8 +46,13 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                     activeRule: 'analysis.*', 
                     subItems: [
                         { 
+                            name: 'Comparasion Metric', 
+                            href: route('analysis.comparison'),
+                            activeRule: 'analysis.comparison' 
+                        },
+                        { 
                             name: 'Strain & Monotony', 
-                            href: route('analysis.strain'), // <--- UBAH DI SINI
+                            href: route('analysis.strain'),
                             activeRule: 'analysis.strain' 
                         },
                         { 

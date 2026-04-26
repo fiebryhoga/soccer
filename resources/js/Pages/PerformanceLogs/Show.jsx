@@ -2,12 +2,11 @@
 
 import React, { useMemo } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
-import { ArrowLeft, Save, Loader2, Download, FileSpreadsheet } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Download, FileSpreadsheet, Trash2 } from 'lucide-react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { FIXED_EXCEL_COLUMNS } from '@/Constants/metrics';
 import ConfigurationHeader from './Partials/ConfigurationHeader';
 import MetricsTable from './Partials/MetricsTable';
-import SessionAnalysis from './Partials/SessionAnalysis';
 
 const POSITION_ORDER = { 'CB': 1, 'FB': 2, 'MF': 3, 'WF': 4, 'FW': 5 };
 
@@ -84,7 +83,7 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
                  targetValue = activeBenchmark.metrics[colId]; 
              } else if (!position) {
                  const vals = Object.values(activeBenchmark.metrics[colId]);
-                 targetValue = vals.reduce((a,b)=>a+b,0) / vals.length || 100;
+                 targetValue = vals.slateuce((a,b)=>a+b,0) / vals.length || 100;
              }
         }
         
@@ -135,7 +134,6 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
 
         let targetPlayers = data.players_data;
         
-        // PENGELOMPOKKAN CUSTOM SELECT
         const distanceGroup = ['total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh'];
         const hr4Group = ['hr_band_4_dist', 'hr_band_4_dur'];
         const hr5Group = ['hr_band_5_dist', 'hr_band_5_dur'];
@@ -145,11 +143,9 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
         else if (hr4Group.includes(colId)) targetPlayers = data.players_data.filter(p => p.selected_hr4);
         else if (hr5Group.includes(colId)) targetPlayers = data.players_data.filter(p => p.selected_hr5);
         else if (plGroup.includes(colId)) targetPlayers = data.players_data.filter(p => p.selected_pl);
-        // Jika Accels, Decels, Max Vel, Highest (All Group) -> Menggunakan semua pemain (tidak di-filter)
 
         if (targetPlayers.length === 0) return '-';
 
-        // LOGIKA KHUSUS: RATA-RATA WAKTU (DURASI)
         if (colId === 'hr_band_4_dur' || colId === 'hr_band_5_dur') {
             let sumSec = 0; let count = 0;
             targetPlayers.forEach(p => {
@@ -160,7 +156,6 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
             return count > 0 ? secondsToTime(sumSec / count) : '-';
         }
 
-        // LOGIKA STANDAR: RATA-RATA ANGKA
         let sum = 0, count = 0;
         targetPlayers.forEach(p => {
             const val = parseFloat(getAutoCalculatedValue(p, colId));
@@ -182,34 +177,23 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
         const pasteData = e.clipboardData.getData('text');
         if (!pasteData) return;
         
-        // Pisahkan baris (enter) dan kolom (tab) bawaan Excel
         const rows = pasteData.split(/\r?\n/).map(r => r.split('\t'));
         let newData = [...data.players_data];
-        
-        // Cari index kolom tempat user klik paste (Biasanya di Total Duration)
         const startColIdx = FIXED_EXCEL_COLUMNS.findIndex(c => c.id === colId);
         
         rows.forEach((row, i) => {
-            if (row.length === 1 && row[0] === '') return; // Skip baris kosong
+            if (row.length === 1 && row[0] === '') return;
             const targetRowIdx = rowIndex + i;
             
             if (newData[targetRowIdx]) {
-                // ==========================================================
-                // SMART FILTER: Buang semua cell yang mengandung tanda '%'
-                // ==========================================================
                 const cleanedRow = row.filter(val => !val.includes('%'));
 
                 cleanedRow.forEach((val, j) => {
                     const targetColIdx = startColIdx + j;
-                    
                     if (targetColIdx >= 0 && targetColIdx < FIXED_EXCEL_COLUMNS.length) {
                         const targetColId = FIXED_EXCEL_COLUMNS[targetColIdx].id;
-                        
-                        // JANGAN masukkan data ke kolom yang menggunakan rumus / terkunci
                         const isAutoCalculated = ['hir_19_8_kmh', 'total_18kmh', 'highest_velocity'].includes(targetColId);
-                        
                         if (!isAutoCalculated) {
-                            // Ganti koma Excel jadi titik (format angka standar) lalu bersihkan spasi
                             newData[targetRowIdx].metrics[targetColId] = val.replace(',', '.').trim();
                         }
                     }
@@ -222,10 +206,7 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
 
     const handleChange = (rowIndex, colId, value) => {
         if (['hir_19_8_kmh', 'total_18kmh', 'highest_velocity'].includes(colId)) return;
-        
         let newData = [...data.players_data];
-        
-        // KUNCI PERBAIKAN: Deep clone baris dan object metrics saat diketik
         newData[rowIndex] = {
             ...newData[rowIndex],
             metrics: {
@@ -233,7 +214,19 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
                 [colId]: value
             }
         };
-        
+        setData('players_data', newData);
+    };
+
+    // FUNGSI CLEAR ALL (Dipindahkan dari MetricsTable)
+    const clearAll = () => {
+        if (!confirm('Yakin ingin mengosongkan SELURUH data metrik di tabel ini?')) return;
+        const newData = data.players_data.map(p => {
+            const newMetrics = { ...p.metrics };
+            FIXED_EXCEL_COLUMNS.forEach(col => {
+                if (!['total_18kmh', 'highest_velocity'].includes(col.id)) newMetrics[col.id] = '';
+            });
+            return { ...p, metrics: newMetrics };
+        });
         setData('players_data', newData);
     };
 
@@ -256,24 +249,29 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
         });
     };
 
+    const formattedDate = new Date(log.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const displayTitle = log.title || `Session ${log.id}`;
+    const pageHeaderTitle = `Update ${displayTitle} - ${formattedDate}`;
+
     return (
         <AuthenticatedLayout 
             user={auth.user} 
-            headerTitle="Update Data GPS"
-            headerDescription="Edit metrik dan simpan perubahan untuk memperbarui rekor pemain."
+            headerTitle={pageHeaderTitle}
+            headerDescription="Edit metrik, sesuaikan acuan benchmark, dan simpan perubahan untuk memperbarui rekor pemain secara real-time."
         >
-            <Head title={`GPS Log - ${log.date}`} />
+            <Head title={`${displayTitle} - ${formattedDate}`} />
 
             <div className="w-full pb-12 space-y-4 relative">
                 
                 {/* Tombol Kembali */}
-                <Link href={route('performance-logs.index')} className="inline-flex items-center gap-2 text-[11px] font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors mb-2 tracking-wide">
-                    <ArrowLeft size={14} strokeWidth={2.5}/> Kembali ke Timeline
+                <Link href={route('performance-logs.index')} className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors mb-2 tracking-wide group">
+                    <ArrowLeft size={14} strokeWidth={2.5} className="group-hover:-translate-x-0.5 transition-transform" /> 
+                    Kembali ke Timeline
                 </Link>
 
-                <form onSubmit={submit} className="bg-white dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm flex flex-col overflow-hidden">
+                <form onSubmit={submit} className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm flex flex-col overflow-hidden transition-colors">
                     
-                    {/* Header Konfigurasi (Partial) */}
+                    {/* Header Konfigurasi */}
                     <ConfigurationHeader 
                         data={data} 
                         setData={setData} 
@@ -281,8 +279,8 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
                         errors={errors} 
                     />
 
-                    {/* Tabel Metrik Data (Partial) */}
-                    <div className="border-b border-zinc-200 dark:border-zinc-800">
+                    {/* Tabel Metrik Data */}
+                    <div className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-950 p-4 pb-0">
                         <MetricsTable 
                             data={data}
                             setData={setData}
@@ -294,37 +292,47 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
                         />
                     </div>
 
-                    {/* ========================================================= */}
-                    {/* (BARU) DASHBOARD ANALISIS MUNCUL DI SINI SECARA REAL-TIME */}
-                    {/* ========================================================= */}
-
                     {/* FOOTER ACTION BAR */}
-                    <div className="p-4 bg-zinc-50 dark:bg-zinc-900/30 border-t border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div className="p-4 bg-zinc-50/80 dark:bg-zinc-900/50 backdrop-blur-sm flex flex-col md:flex-row justify-between items-center gap-4 border-t border-zinc-200 dark:border-zinc-800">
                         
-                        {/* Tombol Export (Backend Generated) */}
-                        <div className="flex w-full sm:w-auto gap-3">
+                        {/* Tombol Export */}
+                        <div className="flex w-full md:w-auto gap-3">
                             <a 
                                 href={route('performance-logs.export.pdf', log.id)} 
                                 target="_blank"
-                                className="flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors bg-white dark:bg-[#09090b] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm"
+                                className="flex-1 md:flex-none px-5 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all bg-white dark:bg-zinc-950 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-sm"
                             >
                                 <Download size={14} strokeWidth={2.5} /> Unduh PDF
                             </a>
                             <a 
                                 href={route('performance-logs.export.excel', log.id)} 
-                                className="flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors bg-white dark:bg-[#09090b] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm"
+                                className="flex-1 md:flex-none px-5 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all bg-white dark:bg-zinc-950 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-sm"
                             >
                                 <FileSpreadsheet size={14} strokeWidth={2.5} /> Unduh Excel
                             </a>
                         </div>
 
-                        <div className="flex w-full sm:w-auto items-center gap-4">
-                            {processing && <span className="text-[10px] font-bold text-zinc-500 animate-pulse uppercase tracking-widest">Menyimpan...</span>}
+                        {/* Aksi Kanan: Kosongkan & Simpan */}
+                        <div className="flex w-full md:w-auto items-center gap-3">
+                            {processing && <span className="text-[10px] font-black text-zinc-500 animate-pulse uppercase tracking-widest hidden md:inline-block mr-2">Menyimpan...</span>}
+                            
+                            {/* Tombol Kosongkan Tabel dipindah kesini */}
+                            <button 
+                                type="button" 
+                                onClick={clearAll} 
+                                className="w-full sm:w-auto px-5 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all text-slate-600 dark:text-slate-400 bg-slate-50 hover:bg-slate-100 dark:bg-slate-500/10 dark:hover:bg-slate-500/20 border border-slate-200 dark:border-slate-500/20 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500/50"
+                            >
+                                <Trash2 size={16} strokeWidth={2.5} />
+                                <span className="hidden sm:inline">Kosongkan</span>
+                            </button>
+
                             <button 
                                 onClick={submit}
                                 disabled={processing}
-                                className={`w-full sm:w-auto px-8 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm
-                                    ${processing ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-400 cursor-not-allowed border border-zinc-200 dark:border-zinc-800' : 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200'}
+                                className={`w-full sm:w-auto px-8 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-1 dark:focus:ring-offset-zinc-950
+                                    ${processing 
+                                        ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 cursor-not-allowed border border-transparent' 
+                                        : 'bg-zinc-900 dark:bg-zinc-100 text-zinc-50 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 focus:ring-zinc-900 dark:focus:ring-zinc-100'}
                                 `}
                             >
                                 {processing ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} strokeWidth={2.5} />}

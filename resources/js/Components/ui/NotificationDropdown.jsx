@@ -30,10 +30,10 @@ export default function NotificationDropdown() {
         switch(type?.toLowerCase()) {
             case 'create': 
             case 'add':
-                return <PlusCircle size={12} className="text-emerald-500" />;
+                return <PlusCircle size={12} className="text-slate-500" />;
             case 'update': 
             case 'edit':
-                return <Edit2 size={12} className="text-blue-500" />;
+                return <Edit2 size={12} className="text-gray-500" />;
             case 'delete': 
             case 'remove':
                 return <Trash2 size={12} className="text-rose-500" />;
@@ -51,7 +51,7 @@ export default function NotificationDropdown() {
     };
 
     return (
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative z-50" ref={dropdownRef}>
             {/* Tombol Lonceng dengan Badge Angka */}
             <button 
                 onClick={() => setIsOpen(!isOpen)}
@@ -66,7 +66,7 @@ export default function NotificationDropdown() {
                 
                 {/* Badge Angka (Muncul hanya jika ada > 0 notif) */}
                 {rawUnreadCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-zinc-100 dark:border-zinc-900 shadow-sm z-10">
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-slate-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-zinc-100 dark:border-zinc-900 shadow-sm z-10">
                         {unreadBadgeText}
                     </span>
                 )}
@@ -88,7 +88,7 @@ export default function NotificationDropdown() {
                         <div className="flex items-center gap-2">
                             <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Recent Activity</h3>
                             {rawUnreadCount > 0 && (
-                                <span className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+                                <span className="bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400 text-[10px] font-bold px-1.5 py-0.5 rounded-md">
                                     {rawUnreadCount} new
                                 </span>
                             )}
@@ -96,7 +96,7 @@ export default function NotificationDropdown() {
                         <button 
                             onClick={markAllAsRead}
                             disabled={rawUnreadCount === 0}
-                            className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 disabled:opacity-50 flex items-center gap-1 transition-colors focus:outline-none"
+                            className="text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 flex items-center gap-1 transition-colors focus:outline-none"
                         >
                             <CheckCircle2 size={12} />
                             Mark all read
@@ -118,7 +118,7 @@ export default function NotificationDropdown() {
                                         key={notif.id} 
                                         href={notif.href || '#'}
                                         onClick={() => setIsOpen(false)} 
-                                        className={`flex items-start gap-3 p-4 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors ${!notif.is_read ? 'bg-emerald-50/30 dark:bg-emerald-900/10' : ''}`}
+                                        className={`flex items-start gap-3 p-4 border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors ${!notif.is_read ? 'bg-slate-50/30 dark:bg-slate-900/10' : ''}`}
                                     >
                                         <div className="relative shrink-0">
                                             {notif.user_avatar ? (
@@ -153,7 +153,7 @@ export default function NotificationDropdown() {
                                         </div>
 
                                         {!notif.is_read && (
-                                            <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 mt-1.5 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
+                                            <div className="w-2 h-2 rounded-full bg-slate-500 shrink-0 mt-1.5 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
                                         )}
                                     </Link>
                                 );
