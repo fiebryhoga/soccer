@@ -40,10 +40,7 @@ class PerformanceLogController extends Controller
             ->get()->keyBy('date');
 
         $calendar = [];
-        // Buat period dari start ke end
         $period = CarbonPeriod::create($start, $end);
-        
-        // Ubah period ke array lalu balik urutannya (Terbaru ke Terlama)
         $dates = array_reverse(iterator_to_array($period));
 
         foreach ($dates as $date) {
@@ -96,41 +93,33 @@ class PerformanceLogController extends Controller
         $dateObj = Carbon::parse($request->date);
         $formattedDate = $dateObj->translatedFormat('d M Y');
 
-        // Cari apakah log untuk tanggal ini sudah ada
         $existingLog = PerformanceLog::where('club_id', $club->id)->where('date', $request->date)->first();
         $title = null;
 
         if ($request->type !== 'off') {
-            // Jika log sudah ada dan punya judul, pertahankan judul lamanya
             if ($existingLog && $existingLog->title) {
                 $title = $existingLog->title;
             } else {
                 // AUTO GENERATE TITLE
                 if ($request->type === 'training') {
-                    // 1. Cari nomor seri latihan terakhir di database klub ini
                     $lastTraining = PerformanceLog::where('club_id', $club->id)
                         ->where('type', 'training')
                         ->whereNotNull('title')
-                        ->where('title', 'like', 'Training %') // Pastikan judulnya memang hasil auto-generate/berawalan Training
+                        ->where('title', 'like', 'Training %')
                         ->orderBy('date', 'desc')
                         ->first();
 
                     $nextSeries = 1;
-
                     if ($lastTraining) {
-                        // Ekstrak angka "001" dari "Training 001 - 26 Mei 2026"
                         preg_match('/Training (\d+) -/', $lastTraining->title, $matches);
                         if (isset($matches[1])) {
                             $nextSeries = intval($matches[1]) + 1;
                         }
                     }
-
-                    // Format jadi 3 digit (001, 002, 010, dst)
                     $seriesString = str_pad($nextSeries, 3, '0', STR_PAD_LEFT);
-                    $title = "Training {$seriesString} - {$formattedDate}";
-
+                    $title = "Training {$seriesString}";
                 } else if ($request->type === 'match') {
-                    $title = "Match VS ... - {$formattedDate}";
+                    $title = "Match VS ...";
                 }
             }
         }
@@ -142,7 +131,7 @@ class PerformanceLogController extends Controller
             ],
             [
                 'type' => $request->type,
-                'title' => $title, // Simpan judul (atau null jika off)
+                'title' => $title, 
             ]
         );
 
@@ -158,16 +147,15 @@ class PerformanceLogController extends Controller
     public function show($id)
     {
         $log = PerformanceLog::with('benchmark')->findOrFail($id);
-        $club = Club::first(); // AMBIL DATA KLUB DI SINI
+        $club = Club::first();
 
-        // Pastikan url logo bisa dibaca
         if ($club) {
             $club->logo_url = $club->logo ? asset('storage/' . $club->logo) : null;
         }
 
         return inertia('PerformanceLogs/Show', [
             'log' => $log,
-            'club' => $club, // LEMPAR KE REACT DI SINI
+            'club' => $club, 
             'players' => Player::orderBy('position_number', 'asc')->get(),
             'existing_metrics' => PlayerMetric::where('performance_log_id', $log->id)->get()->keyBy('player_id'),
             'benchmarks' => Benchmark::all()
@@ -175,30 +163,25 @@ class PerformanceLogController extends Controller
     }
 
     /**
-     * 5. Menyimpan Data Metrik GPS dari Hasil Paste Excel
-     */
-    /**
-     * Menyimpan Data Metrik GPS (Bisa Insert & Update)
+     * 5. Menyimpan Data Metrik GPS (Bisa Insert & Update)
      */
     public function storeMetrics(Request $request, PerformanceLog $log)
     {
-        // 1. Validasi request
         $request->validate([
             'data.title' => 'required|string|max:255',
             'data.benchmark_id' => 'required|exists:benchmarks,id',
             'data.players_data' => 'required|array',
         ]);
 
-        // 2. Update metadata log
         $log->update([
             'title' => $request->data['title'],
             'benchmark_id' => $request->data['benchmark_id'],
         ]);
 
+        $recordBreakers = [];
+
         foreach ($request->data['players_data'] as $playerData) {
             
-            // 3. GUNAKAN updateOrCreate AGAR BISA EDIT DATA!
-            // Jika data belum ada = Insert. Jika sudah ada = Update metriknya.
             PlayerMetric::updateOrCreate(
                 [
                     'performance_log_id' => $log->id,
@@ -209,8 +192,7 @@ class PerformanceLogController extends Controller
                 ]
             );
 
-            // 4. Logika Update Rekor (Highest Metrics)
-            // Selalu dicek setiap kali simpan/edit
+            // Logika Update Rekor
             $player = Player::find($playerData['player_id']);
             if ($player) {
                 $highest = $player->highest_metrics ?? [];
@@ -221,7 +203,6 @@ class PerformanceLogController extends Controller
                     if ($value === '' || $value === null) continue;
                     $numVal = floatval($value);
                     
-                    // Pastikan key yang disimpan sesuai, dan bandingkan dengan teliti
                     if (!isset($highest[$key]) || $numVal > floatval($highest[$key])) {
                         $highest[$key] = $numVal;
                         $isRecordBroken = true;
@@ -229,29 +210,43 @@ class PerformanceLogController extends Controller
                 }
 
                 if ($isRecordBroken) {
-                    // Menggunakan update agar perubahan JSON tersimpan
                     $player->update(['highest_metrics' => $highest]); 
+                    $recordBreakers[] = $player->name; // Simpan nama pemain yang memecahkan rekor
                 }
             }
+        }
+
+        // --- PENCATATAN AKTIVITAS ---
+        $dateFormatted = Carbon::parse($log->date)->translatedFormat('d M Y');
+        $activityDetails = "Sesi: {$log->title} ({$dateFormatted})";
+        Activity::log('memasukkan data metrik GPS baru', $activityDetails, 'create');
+
+        if (count($recordBreakers) > 0) {
+            $names = implode(', ', array_slice($recordBreakers, 0, 3));
+            $more = count($recordBreakers) > 3 ? " dan " . (count($recordBreakers) - 3) . " lainnya" : "";
+            Activity::log('mencatat pemecahan rekor GPS baru', "Pemain: {$names}{$more} pada sesi {$log->title}", 'update');
         }
 
         return redirect()->back()->with('message', 'Data GPS berhasil disimpan dan diperbarui!');
     }
 
+    /**
+     * Memperbarui Data Metrik GPS (Bulk Update / Sort)
+     */
     public function updateMetrics(Request $request, PerformanceLog $log)
     {
-        // Validasi data
         $request->validate([
             'title' => 'required|string|max:255',
             'benchmark_id' => 'required|exists:benchmarks,id',
             'players_data' => 'required|array',
         ]);
 
-        // 1. Update metadata log
         $log->update([
             'title' => $request->title,
             'benchmark_id' => $request->benchmark_id,
         ]);
+
+        $recordBreakers = [];
 
         foreach ($request->players_data as $index => $playerData) {
             
@@ -266,7 +261,7 @@ class PerformanceLogController extends Controller
                 ]
             );
 
-            // 3. Update Rekor Tertinggi (Highest) di Tabel Player
+            // Update Rekor Tertinggi
             $player = Player::find($playerData['player_id']);
             if ($player) {
                 $highest = $player->highest_metrics ?? [];
@@ -285,8 +280,20 @@ class PerformanceLogController extends Controller
 
                 if ($isRecordBroken) {
                     $player->update(['highest_metrics' => $highest]);
+                    $recordBreakers[] = $player->name;
                 }
             }
+        }
+
+        // --- PENCATATAN AKTIVITAS ---
+        $dateFormatted = Carbon::parse($log->date)->translatedFormat('d M Y');
+        $activityDetails = "Sesi: {$log->title} ({$dateFormatted})";
+        Activity::log('memperbarui data metrik GPS', $activityDetails, 'update');
+
+        if (count($recordBreakers) > 0) {
+            $names = implode(', ', array_slice($recordBreakers, 0, 3));
+            $more = count($recordBreakers) > 3 ? " dan " . (count($recordBreakers) - 3) . " lainnya" : "";
+            Activity::log('mencatat pemecahan rekor GPS', "Pemain: {$names}{$more} pada sesi {$log->title}", 'update');
         }
 
         return redirect()->back()->with('message', 'Data berhasil diperbarui!');
@@ -300,7 +307,6 @@ class PerformanceLogController extends Controller
         if ($rawValue === null || $rawValue === '' || !is_numeric($rawValue)) return 0;
         $numValue = floatval($rawValue);
 
-        // KHUSUS MAX VELOCITY
         if ($colId === 'max_velocity') {
             $targetHighest = floatval($playerHighest['highest_velocity'] ?? $playerHighest['max_velocity'] ?? 0);
             
@@ -321,7 +327,6 @@ class PerformanceLogController extends Controller
             return number_format(($numValue / max($targetHighest, 0.01)) * 100, 1, '.', '');
         }
         
-        // METRIK LAINNYA
         $targetValue = 100;
         if (isset($activeBenchmark['metrics'][$colId])) {
              if ($position && isset($activeBenchmark['metrics'][$colId][$position])) {
@@ -356,10 +361,6 @@ class PerformanceLogController extends Controller
         return $metrics[$colId] ?? '-';
     }
 
-
-    // ==========================================
-    // EXPORT PDF
-    // ==========================================
     // ==========================================
     // EXPORT PDF
     // ==========================================
@@ -369,7 +370,7 @@ class PerformanceLogController extends Controller
         $club = Club::first();
         $benchmark = $log->benchmark ? $log->benchmark->toArray() : null;
         
-        $players = Player::all(); // Ambil semua pemain tanpa diurutkan dulu
+        $players = Player::all(); 
         $metrics = PlayerMetric::where('performance_log_id', $log->id)->get()->keyBy('player_id');
 
         $reportData = $players->map(function($player) use ($metrics, $benchmark) {
@@ -377,7 +378,6 @@ class PerformanceLogController extends Controller
             $rawMetrics = $playerMetric ? $playerMetric->metrics : [];
             $historicalHighest = $player->highest_metrics ?? [];
             
-            // Simpan sort_order untuk dipakai saat sorting koleksi
             $player->sort_order = $playerMetric ? $playerMetric->sort_order : null;
 
             $calculatedData = [];
@@ -396,14 +396,11 @@ class PerformanceLogController extends Controller
             return $player;
         });
 
-        // SORTING DATA BERDASARKAN ATURAN YANG SAMA DENGAN FRONTEND
         $reportData = $reportData->sort(function ($a, $b) {
-            // 1. Jika keduanya punya sort_order, urutkan berdasarkan sort_order (drag-and-drop)
             if ($a->sort_order !== null && $b->sort_order !== null) {
                 return $a->sort_order <=> $b->sort_order;
             }
 
-            // 2. Default urutan posisi (CB -> FB -> MF -> WF -> FW)
             $positionOrder = ['CB' => 1, 'FB' => 2, 'MF' => 3, 'WF' => 4, 'FW' => 5];
             $posA = $positionOrder[strtoupper($a->position)] ?? 99;
             $posB = $positionOrder[strtoupper($b->position)] ?? 99;
@@ -412,11 +409,9 @@ class PerformanceLogController extends Controller
                 return $posA <=> $posB;
             }
 
-            // 3. Jika posisi sama, urutkan berdasarkan nama (abjad)
             return strcmp($a->name, $b->name);
-        })->values(); // Reset ulang key array setelah sorting
+        })->values(); 
 
-        // Hitung Rata-Rata Tim
         $teamAverage = [];
         $columnsToAverage = [
             'total_distance', 'dist_per_min', 'hir_18_kmh', 'hir_19_8_kmh', 
@@ -435,6 +430,9 @@ class PerformanceLogController extends Controller
             $teamAverage[$col] = number_format($avgVal, 1, '.', '');
             $teamAverage[$col . '_percent'] = $this->calculatePercentage($col, $teamAverage[$col], null, $benchmark, []);
         }
+
+        // --- PENCATATAN AKTIVITAS EXPORT ---
+        Activity::log('mengunduh laporan PDF', $log->title, 'export');
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.performance_report', [
             'log' => $log,
@@ -455,7 +453,7 @@ class PerformanceLogController extends Controller
         $club = Club::first();
         $benchmark = $log->benchmark ? $log->benchmark->toArray() : null;
         
-        $players = Player::all(); // Ambil semua pemain tanpa diurutkan dulu
+        $players = Player::all(); 
         $metrics = PlayerMetric::where('performance_log_id', $log->id)->get()->keyBy('player_id');
 
         $reportData = $players->map(function($player) use ($metrics, $benchmark) {
@@ -463,7 +461,6 @@ class PerformanceLogController extends Controller
             $rawMetrics = $playerMetric ? $playerMetric->metrics : [];
             $historicalHighest = $player->highest_metrics ?? [];
             
-            // Simpan sort_order
             $player->sort_order = $playerMetric ? $playerMetric->sort_order : null;
 
             $calculatedData = [];
@@ -482,14 +479,11 @@ class PerformanceLogController extends Controller
             return $player;
         });
 
-        // SORTING DATA BERDASARKAN ATURAN YANG SAMA DENGAN FRONTEND
         $reportData = $reportData->sort(function ($a, $b) {
-            // 1. Jika keduanya punya sort_order
             if ($a->sort_order !== null && $b->sort_order !== null) {
                 return $a->sort_order <=> $b->sort_order;
             }
 
-            // 2. Default urutan posisi
             $positionOrder = ['CB' => 1, 'FB' => 2, 'MF' => 3, 'WF' => 4, 'FW' => 5];
             $posA = $positionOrder[strtoupper($a->position)] ?? 99;
             $posB = $positionOrder[strtoupper($b->position)] ?? 99;
@@ -498,11 +492,9 @@ class PerformanceLogController extends Controller
                 return $posA <=> $posB;
             }
 
-            // 3. Jika posisi sama, urut berdasarkan abjad
             return strcmp($a->name, $b->name);
-        })->values(); // Reset ulang key array setelah sorting
+        })->values(); 
 
-        // Hitung Rata-Rata Tim
         $teamAverage = [];
         $columnsToAverage = [
             'total_distance', 'dist_per_min', 'hir_18_kmh', 'hir_19_8_kmh', 
@@ -521,6 +513,9 @@ class PerformanceLogController extends Controller
             $teamAverage[$col] = number_format($avgVal, 1, '.', '');
             $teamAverage[$col . '_percent'] = $this->calculatePercentage($col, $teamAverage[$col], null, $benchmark, []);
         }
+
+        // --- PENCATATAN AKTIVITAS EXPORT ---
+        Activity::log('mengunduh laporan Excel', $log->title, 'export');
 
         return \Maatwebsite\Excel\Facades\Excel::download(
             new \App\Exports\PerformanceLogExport($log, $club, $reportData, $teamAverage), 

@@ -91,22 +91,29 @@ class ClubController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            // UBAH: Validasi position_number
             'position_number' => [
                 'required', 'integer', 'min:1', 'max:99',
                 Rule::unique('players')->where('club_id', $club->id)
             ],
             'position' => 'required|in:CB,FB,MF,WF,FW',
+            'highest_velocity' => 'nullable|numeric|min:0', // <-- BARU: Validasi Highest Velocity
             'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         $photoPath = $request->hasFile('profile_photo') ? $request->file('profile_photo')->store('players', 'public') : null;
 
+        // <-- BARU: Siapkan data array untuk highest_metrics
+        $highestMetrics = [];
+        if ($request->filled('highest_velocity')) {
+            $highestMetrics['highest_velocity'] = $request->highest_velocity;
+        }
+
         $player = $club->players()->create([
             'name' => $request->name,
-            'position_number' => $request->position_number, // UBAH INI
+            'position_number' => $request->position_number,
             'position' => $request->position,
             'profile_photo' => $photoPath,
+            'highest_metrics' => empty($highestMetrics) ? null : $highestMetrics, // <-- BARU: Simpan ke DB
         ]);
 
         Activity::log('menambahkan pemain baru', $player->name . ' (#' . $player->position_number . ')', 'create');
@@ -118,7 +125,6 @@ class ClubController extends Controller
     {
         $club = Club::firstOrFail();
 
-        // Validasi array 'players'
         $request->validate([
             'players' => 'required|array|min:1',
             'players.*.name' => 'required|string|max:255',
@@ -127,13 +133,12 @@ class ClubController extends Controller
                 'integer', 
                 'min:1', 
                 'max:99',
-                'distinct', // Memastikan tidak ada nomor yang kembar di dalam file excel yang di-copy
-                // Memastikan tidak ada nomor yang sama di dalam database klub
+                'distinct',
                 Rule::unique('players', 'position_number')->where('club_id', $club->id) 
             ],
             'players.*.position' => 'required|in:CB,FB,MF,WF,FW',
+            'players.*.highest_velocity' => 'nullable|numeric|min:0', // <-- BARU: Tambahkan untuk Bulk jika nanti dari Excel mau di-paste juga
         ], [
-            // Pesan error kustom agar lebih mudah dimengerti saat bulk insert gagal
             'players.*.position_number.unique' => 'Salah satu nomor posisi yang Anda paste sudah digunakan oleh pemain di database.',
             'players.*.position_number.distinct' => 'Ada nomor posisi yang kembar/duplikat di dalam data yang Anda paste.',
             'players.*.position.in' => 'Posisi harus salah satu dari: CB, FB, MF, WF, FW.'
@@ -141,12 +146,20 @@ class ClubController extends Controller
 
         $count = 0;
         foreach ($request->players as $playerData) {
+            
+            // <-- BARU: Cek highest velocity dari data excel/paste
+            $highestMetrics = [];
+            if (isset($playerData['highest_velocity']) && $playerData['highest_velocity'] !== '') {
+                // Pastikan format koma (,) menjadi titik (.) agar terbaca sebagai desimal
+                $highestMetrics['highest_velocity'] = (float) str_replace(',', '.', $playerData['highest_velocity']);
+            }
+
             $club->players()->create([
                 'name' => $playerData['name'],
                 'position_number' => $playerData['position_number'],
-                // Memastikan input posisi selalu kapital agar aman masuk database
                 'position' => strtoupper($playerData['position']),
-                'profile_photo' => null, // Untuk massal, foto di-set null. Bisa diedit satuan nanti.
+                'highest_metrics' => empty($highestMetrics) ? null : $highestMetrics, // <-- BARU
+                'profile_photo' => null, 
             ]);
             $count++;
         }
@@ -160,18 +173,28 @@ class ClubController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            // UBAH: Validasi position_number
             'position_number' => [
                 'required', 'integer', 'min:1', 'max:99',
                 Rule::unique('players')->where('club_id', $player->club_id)->ignore($player->id)
             ],
             'position' => 'required|in:CB,FB,MF,WF,FW',
+            'highest_velocity' => 'nullable|numeric|min:0', // <-- BARU
             'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         $player->name = $request->name;
-        $player->position_number = $request->position_number; // UBAH INI
+        $player->position_number = $request->position_number;
         $player->position = $request->position;
+
+        // <-- BARU: Update nilai Highest Velocity ke dalam array JSON
+        $highestMetrics = $player->highest_metrics ?? []; // Ambil data lama jika ada
+        if ($request->filled('highest_velocity')) {
+            $highestMetrics['highest_velocity'] = $request->highest_velocity;
+        } else {
+            // Jika dikosongkan saat update, hapus key highest_velocity
+            unset($highestMetrics['highest_velocity']);
+        }
+        $player->highest_metrics = empty($highestMetrics) ? null : $highestMetrics;
 
         if ($request->hasFile('profile_photo')) {
             if ($player->profile_photo) Storage::disk('public')->delete($player->profile_photo);

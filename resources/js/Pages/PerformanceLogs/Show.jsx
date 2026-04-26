@@ -26,7 +26,8 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
                 position: player.position,
                 historical_highest: player.highest_metrics || {}, 
                 metrics: metricsData,
-                sort_order: existing?.sort_order ?? null 
+                sort_order: existing?.sort_order ?? null,
+                selected: true
             };
         });
 
@@ -110,10 +111,22 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
     };
 
     const getColumnAverage = (colId) => {
+        // Kecualikan Total Duration sesuai permintaan
+        if (colId === 'total_duration') return '-';
+    
+        // Filter hanya pemain yang dicentang
+        const selectedPlayers = data.players_data.filter(p => p.selected);
+        
+        // Jika tidak ada yang dipilih, jangan tampilkan angka
+        if (selectedPlayers.length === 0) return '-';
+    
         let sum = 0, count = 0;
-        data.players_data.forEach(p => {
+        selectedPlayers.forEach(p => {
             const val = parseFloat(getAutoCalculatedValue(p, colId));
-            if (!isNaN(val) && val !== '') { sum += val; count++; }
+            if (!isNaN(val) && val !== '') { 
+                sum += val; 
+                count++; 
+            }
         });
         return count > 0 ? (sum / count).toFixed(1) : 0;
     };
@@ -124,27 +137,34 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
         const pasteData = e.clipboardData.getData('text');
         if (!pasteData) return;
         
+        // Pisahkan baris (enter) dan kolom (tab) bawaan Excel
         const rows = pasteData.split(/\r?\n/).map(r => r.split('\t'));
-        let newData = [...data.players_data]; // Shallow copy array
+        let newData = [...data.players_data];
+        
+        // Cari index kolom tempat user klik paste (Biasanya di Total Duration)
         const startColIdx = FIXED_EXCEL_COLUMNS.findIndex(c => c.id === colId);
         
         rows.forEach((row, i) => {
-            if (row.length === 1 && row[0] === '') return; 
+            if (row.length === 1 && row[0] === '') return; // Skip baris kosong
             const targetRowIdx = rowIndex + i;
             
             if (newData[targetRowIdx]) {
-                // KUNCI PERBAIKAN: Deep clone baris dan objek metrics ini
-                // agar terlepas dari sifat Read-Only bawaan props Inertia
-                newData[targetRowIdx] = {
-                    ...newData[targetRowIdx],
-                    metrics: { ...newData[targetRowIdx].metrics }
-                };
+                // ==========================================================
+                // SMART FILTER: Buang semua cell yang mengandung tanda '%'
+                // ==========================================================
+                const cleanedRow = row.filter(val => !val.includes('%'));
 
-                row.forEach((val, j) => {
+                cleanedRow.forEach((val, j) => {
                     const targetColIdx = startColIdx + j;
+                    
                     if (targetColIdx >= 0 && targetColIdx < FIXED_EXCEL_COLUMNS.length) {
                         const targetColId = FIXED_EXCEL_COLUMNS[targetColIdx].id;
-                        if (!['hir_19_8_kmh', 'total_18kmh', 'highest_velocity'].includes(targetColId)) {
+                        
+                        // JANGAN masukkan data ke kolom yang menggunakan rumus / terkunci
+                        const isAutoCalculated = ['hir_19_8_kmh', 'total_18kmh', 'highest_velocity'].includes(targetColId);
+                        
+                        if (!isAutoCalculated) {
+                            // Ganti koma Excel jadi titik (format angka standar) lalu bersihkan spasi
                             newData[targetRowIdx].metrics[targetColId] = val.replace(',', '.').trim();
                         }
                     }
@@ -202,7 +222,7 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
             <div className="w-full pb-12 space-y-4 relative">
                 
                 {/* Tombol Kembali */}
-                <Link href={route('performance-logs.index')} className="inline-flex items-center gap-2 text-[11px] font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors mb-2 uppercase tracking-widest">
+                <Link href={route('performance-logs.index')} className="inline-flex items-center gap-2 text-[11px] font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors mb-2 tracking-wide">
                     <ArrowLeft size={14} strokeWidth={2.5}/> Kembali ke Timeline
                 </Link>
 
@@ -253,7 +273,6 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
                             </a>
                         </div>
 
-                        {/* Tombol Simpan */}
                         <div className="flex w-full sm:w-auto items-center gap-4">
                             {processing && <span className="text-[10px] font-bold text-zinc-500 animate-pulse uppercase tracking-widest">Menyimpan...</span>}
                             <button 

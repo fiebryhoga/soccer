@@ -25,12 +25,12 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
             items: [
                 { name: 'Dashboard', icon: LayoutDashboard, href: route('dashboard'), activeRule: 'dashboard' },
                 
-                // TAMBAHAN MENU GPS / TRAINING METRICS
+                
                 // { name: 'GPS & Performance', icon: Activity, href: route('metrics.index'), activeRule: 'metrics.*', badge: 'New' },
                 { name: 'Training Calendar', icon: Calendar, href: route('performance-logs.index'), activeRule: 'performance-logs.*' },
                 
-                { name: 'Player Stats', icon: Users, href: '#', activeRule: 'players.*' },
-                { name: 'Tactics Board', icon: BarChart3, href: '#', activeRule: 'tactics.*' },
+                // { name: 'Player Stats', icon: Users, href: '#', activeRule: 'players.*' },
+                // { name: 'Tactics Board', icon: BarChart3, href: '#', activeRule: 'tactics.*' },
             ]
         },
         {
