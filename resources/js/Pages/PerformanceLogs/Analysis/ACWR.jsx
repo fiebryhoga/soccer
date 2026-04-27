@@ -125,13 +125,11 @@ export default function ACWR({ auth, historicalData, startDate, endDate }) {
                     </div>
                 </div>
 
-                {/* GRAFIK ANALISIS (PARTIAL) */}
                 <ACWRChart 
                     data={computedACWR} 
                     metricLabel={metricOptions.find(o => o.value === selectedMetric)?.label} 
                 />
 
-                {/* TABEL DATA HARIAN EWMA (PARTIAL) */}
                 <ACWRTable data={computedACWR} />
 
             </div>

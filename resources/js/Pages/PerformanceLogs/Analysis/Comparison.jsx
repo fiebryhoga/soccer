@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Search, X, Activity, GitCompare } from 'lucide-react';
+// 1. Tambahkan CheckSquare di sini
+import { Search, X, Activity, GitCompare, CheckSquare } from 'lucide-react'; 
 
 // Import Partials
 import BasicComparisonChart from './Partials/BasicComparisonChart';
@@ -16,9 +17,8 @@ import SessionDNAChart from './Partials/SessionDNAChart';
 
 export default function Comparison({ auth, comparisonData, allSessions }) {
     
-    const { url } = usePage(); // Ambil URL aktif dari Inertia
+    const { url } = usePage(); 
 
-    // FUNGSI PINTAR: Mengekstrak array dari URL apapun formatnya (session_ids[0], session_ids[], dst)
     const getSessionsFromUrl = () => {
         const searchParams = new URLSearchParams(window.location.search);
         const ids = [];
@@ -30,12 +30,10 @@ export default function Comparison({ auth, comparisonData, allSessions }) {
         return ids;
     };
 
-    // 1. URL STATE PERSISTENCE: Ambil dari URL saat page load
     const [selectedSessions, setSelectedSessions] = useState(getSessionsFromUrl());
     const [searchQuery, setSearchQuery] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-    // Sinkronisasi state internal jika URL berubah (misal setelah Refresh, klik Back/Forward browser)
     useEffect(() => {
         const currentIds = getSessionsFromUrl();
         if (JSON.stringify(currentIds) !== JSON.stringify(selectedSessions)) {
@@ -43,7 +41,6 @@ export default function Comparison({ auth, comparisonData, allSessions }) {
         }
     }, [url]);
 
-    // FUNGSI SMART SEARCH
     const filteredSessions = useMemo(() => {
         if (!searchQuery.trim()) return allSessions.slice(0, 5); 
         
@@ -58,37 +55,50 @@ export default function Comparison({ auth, comparisonData, allSessions }) {
             const matchMonth = monthName.includes(q);
 
             return matchName || matchTag || matchDate || matchMonth;
-        }).slice(0, 10); 
+        }).slice(0, 100); 
     }, [searchQuery, allSessions]);
 
-    // Tambah Sesi
+    // 2. FUNGSI BARU: Select All dari hasil filter
+    const addAllFiltered = () => {
+        const newIds = filteredSessions.map(s => s.id);
+        setSelectedSessions(prev => {
+            // Gabungkan yang sudah ada dengan yang baru, hindari duplikat menggunakan Set
+            const combined = [...prev, ...newIds];
+            return [...new Set(combined)];
+        });
+        // Opsional: Tutup dropdown dan bersihkan pencarian setelah select all
+        // Jika ingin tetap terbuka, biarkan baris di bawah dikomentari
+        // setSearchQuery('');
+        // setIsDropdownOpen(false);
+    };
+
+    // 3. MODIFIKASI: Hapus reset input agar teks pencarian tetap ada saat dipilih manual
     const addSession = (session) => {
         if (!selectedSessions.includes(session.id)) {
             setSelectedSessions(prev => [...prev, session.id]);
         }
-        setSearchQuery('');
-        setIsDropdownOpen(false);
+        // Dihapus agar input tidak kerereset dan dropdown tetap terbuka
+        // setSearchQuery(''); 
+        // setIsDropdownOpen(false); 
     };
 
-    // Hapus Sesi
     const removeSession = (id) => {
         setSelectedSessions(prev => prev.filter(s => s !== id));
     };
 
-    // Eksekusi Pencarian
     const applyFilter = () => {
         if (selectedSessions.length > 0) {
             router.get(route('analysis.comparison'), { session_ids: selectedSessions }, { preserveState: true });
+            setIsDropdownOpen(false); // Tutup dropdown saat apply
         }
     };
 
-    // Bersihkan Filter
     const clearFilter = () => {
         setSelectedSessions([]);
+        setSearchQuery(''); // Opsional: bersihkan input saat clear semua
         router.get(route('analysis.comparison'), {}, { preserveState: true });
     };
 
-    // Detail Sesi Terpilih (Untuk Badge)
     const selectedSessionDetails = useMemo(() => {
         return selectedSessions.map(id => allSessions.find(s => s.id === id)).filter(Boolean);
     }, [selectedSessions, allSessions]);
@@ -103,9 +113,6 @@ export default function Comparison({ auth, comparisonData, allSessions }) {
 
             <div className="max-w-[100rem] mx-auto pb-12 space-y-6">
                 
-                {/* ============================================================== */}
-                {/* KOTAK FILTER PENCARIAN (ENTERPRISE STYLE) */}
-                {/* ============================================================== */}
                 <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm p-5 lg:p-6 relative z-30 transition-colors">
                     
                     <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -115,9 +122,8 @@ export default function Comparison({ auth, comparisonData, allSessions }) {
                     
                     <div className="flex flex-col md:flex-row gap-4 items-start">
                         
-                        {/* Area Input & Dropdown */}
                         <div className="relative w-full md:w-1/2">
-                            <div className="relative">
+                            <div className="relative z-50">
                                 <input 
                                     type="text"
                                     placeholder="Ketik tag (MD-1), lawan (Dewa), bulan..."
@@ -132,11 +138,26 @@ export default function Comparison({ auth, comparisonData, allSessions }) {
                                 <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" strokeWidth={2.5}/>
                             </div>
 
-                            {/* DROPDOWN HASIL PENCARIAN */}
                             {isDropdownOpen && (
                                 <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl overflow-hidden z-50 max-h-64 overflow-y-auto">
                                     {filteredSessions.length > 0 ? (
                                         <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                                            
+                                            {/* TOMBOL SELECT ALL MUNCUL SAAT ADA PENCARIAN */}
+                                            {searchQuery.trim() !== '' && (
+                                                <button 
+                                                    onClick={addAllFiltered}
+                                                    className="w-full text-left px-4 py-2.5 bg-zinc-100/80 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <CheckSquare size={16} className="text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors" strokeWidth={2.5} />
+                                                        <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100">
+                                                            Pilih Semua Hasil Filter ({filteredSessions.length})
+                                                        </span>
+                                                    </div>
+                                                </button>
+                                            )}
+
                                             {filteredSessions.map(session => {
                                                 const isSelected = selectedSessions.includes(session.id);
                                                 return (
@@ -165,14 +186,12 @@ export default function Comparison({ auth, comparisonData, allSessions }) {
                                 </div>
                             )}
 
-                            {/* Latar belakang transparan untuk menutup dropdown */}
                             {isDropdownOpen && (
                                 <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)}></div>
                             )}
                         </div>
 
-                        {/* Tombol Eksekusi */}
-                        <div className="flex items-center gap-3 w-full md:w-auto">
+                        <div className="flex items-center gap-3 w-full md:w-auto relative z-30">
                             <button 
                                 onClick={applyFilter} 
                                 disabled={selectedSessions.length < 2}
@@ -194,9 +213,8 @@ export default function Comparison({ auth, comparisonData, allSessions }) {
                         </div>
                     </div>
 
-                    {/* Area Badge Sesi Terpilih (Selected Items) */}
                     {selectedSessionDetails.length > 0 && (
-                        <div className="mt-5 pt-5 border-t border-zinc-200 dark:border-zinc-800">
+                        <div className="mt-5 pt-5 border-t border-zinc-200 dark:border-zinc-800 relative z-30">
                             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">
                                 Sesi Terpilih ({selectedSessions.length}):
                             </p>
@@ -220,9 +238,6 @@ export default function Comparison({ auth, comparisonData, allSessions }) {
                     )}
                 </div>
 
-                {/* ============================================================== */}
-                {/* GRID GRAFIK */}
-                {/* ============================================================== */}
                 {comparisonData.length < 2 ? (
                     <div className="p-12 text-center bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
                         <Activity size={32} className="mx-auto text-zinc-300 dark:text-zinc-700 mb-3" />
@@ -233,9 +248,8 @@ export default function Comparison({ auth, comparisonData, allSessions }) {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-6">
-                        {/* Render Charts */}
                         <VolumeIntensityMatrix data={comparisonData} />
-                        <SessionDNAChart data={comparisonData} />
+                        {/* <SessionDNAChart data={comparisonData} /> */}
                         <BasicComparisonChart data={comparisonData} />
                         <IntensityComparisonChart data={comparisonData} />
                         <SpeedZoneChart data={comparisonData} />

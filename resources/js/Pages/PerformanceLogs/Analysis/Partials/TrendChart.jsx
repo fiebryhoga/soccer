@@ -88,17 +88,17 @@ export default function TrendChart({ data, metricLabel }) {
                         <Legend wrapperStyle={{ paddingTop: '15px', fontSize: '11px', fontWeight: 'bold', color: '#71717a' }} />
                         
                         {/* 1. AREA: Mean Daily (Background Dasar) */}
-                        <Area yAxisId="left" type="monotone" dataKey="meanDaily" name="Mean Daily" stroke="#0ea5e9" fill="url(#colorMean)" strokeWidth={2} />
+                        <Area yAxisId="left" type="monotone" dataKey="meanDaily" name="Mean Daily" stroke="#0ea5e9" fill="url(#colorMean)" strokeWidth={1} />
                         
                         {/* 2. BAR: Weekly Load */}
                         <Bar yAxisId="left" dataKey="weeklyLoad" name="Weekly Load" barSize={36} fill="url(#colorLoad)" radius={[4, 4, 0, 0]} />
                         
                         {/* 3. LINE DASHED: Standard Deviation */}
-                        <Line yAxisId="left" type="monotone" dataKey="stdDev" name="Std. Deviation" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                        <Line yAxisId="left" type="monotone" dataKey="stdDev" name="Std. Deviation" stroke="#f59e0b" strokeWidth={1} strokeDasharray="5 5" dot={false} />
 
                         {/* 4. LINE SOLID: Strain & Monotony (Paling menonjol) */}
-                        <Line yAxisId="right" type="monotone" dataKey="monotony" name="Monotony" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#09090b', stroke: '#10b981' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }} />
-                        <Line yAxisId="left" type="monotone" dataKey="strain" name="Strain" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#09090b', stroke: '#f43f5e' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#f43f5e' }} />
+                        <Line yAxisId="right" type="monotone" dataKey="monotony" name="Monotony" stroke="#10b981" strokeWidth={1} dot={{ r: 4, strokeWidth: 2, fill: '#09090b', stroke: '#10b981' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }} />
+                        <Line yAxisId="left" type="monotone" dataKey="strain" name="Strain" stroke="#f43f5e" strokeWidth={1} dot={{ r: 4, strokeWidth: 2, fill: '#09090b', stroke: '#f43f5e' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#f43f5e' }} />
                         
                     </ComposedChart>
                 </ResponsiveContainer>

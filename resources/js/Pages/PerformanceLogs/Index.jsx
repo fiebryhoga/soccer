@@ -94,7 +94,7 @@ export default function PerformanceLogIndex({ auth, calendar, season_start_date 
             <div className="w-full pb-20 space-y-6">
                 
                 {/* TOOLBAR KONTROL MONOKROM */}
-                <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 shadow-sm flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between z-20 relative">
+                <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 shadow-sm flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between relative">
                     
                     {/* Kiri: Pencarian & Filter Dropdown */}
                     <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto flex-1">
@@ -208,7 +208,7 @@ export default function PerformanceLogIndex({ auth, calendar, season_start_date 
                 </div>
 
                 {/* TIMELINE LIST */}
-                <div className="pt-2 z-10 relative">
+                <div className="pt-2 relative">
                     {!season_start_date ? (
                         <div className="flex flex-col items-center justify-center py-24 border border-dashed border-zinc-300 dark:border-zinc-800 rounded-xl text-zinc-400 bg-zinc-50/50 dark:bg-zinc-950/50">
                             <div className="p-4 bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 mb-4 shadow-sm">

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Command, User, ArrowRight, Loader2, X } from 'lucide-react';
+// IMPORT IKON TARGET UNTUK BENCHMARK
+import { Search, Command, User, ArrowRight, Loader2, X, Trophy, Activity as ActivityIcon, Target } from 'lucide-react';
 import { router } from '@inertiajs/react';
 import { Transition } from '@headlessui/react';
 import axios from 'axios';
@@ -13,14 +14,12 @@ export default function GlobalSearch() {
     const inputRef = useRef(null);
     const containerRef = useRef(null);
 
-    // 1. Tangani Keyboard Shortcut (Cmd+K / Ctrl+K) untuk Fokus ke Input
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
                 inputRef.current?.focus();
             }
-            // Tutup dropdown jika tekan Escape
             if (e.key === 'Escape') {
                 setIsOpen(false);
                 inputRef.current?.blur();
@@ -31,7 +30,6 @@ export default function GlobalSearch() {
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    // 2. Klik di luar area pencarian untuk menutup dropdown
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (containerRef.current && !containerRef.current.contains(event.target)) {
@@ -42,17 +40,15 @@ export default function GlobalSearch() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // 3. Logika Debounce API yang lebih ringan
     useEffect(() => {
         if (!query.trim()) {
             setResults([]);
             setIsLoading(false);
-            // Jangan tutup otomatis jika sedang mengetik, biarkan pengguna melihat pesan "mulai mengetik"
             return;
         }
 
         setIsLoading(true);
-        setIsOpen(true); // Buka dropdown saat mulai mengetik
+        setIsOpen(true);
 
         const delayDebounceFn = setTimeout(async () => {
             try {
@@ -70,7 +66,6 @@ export default function GlobalSearch() {
         return () => clearTimeout(delayDebounceFn);
     }, [query]);
 
-    // 4. Navigasi dan Reset
     const handleSelect = (url) => {
         setIsOpen(false);
         setQuery('');
@@ -84,10 +79,43 @@ export default function GlobalSearch() {
         inputRef.current?.focus();
     };
 
+    // FUNGSI RENDER VISUAL IKON
+    const renderVisual = (result) => {
+        if (result.avatar) {
+            return <img src={result.avatar} alt={result.title} className="w-7 h-7 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-sm" />;
+        }
+        
+        if (result.type === 'Match') {
+            return (
+                <div className="w-7 h-7 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-200 dark:border-orange-800/50 shadow-sm">
+                    <Trophy size={14} strokeWidth={2.5} />
+                </div>
+            );
+        }
+
+        if (result.type === 'Training') {
+            return (
+                <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-800/50 shadow-sm">
+                    <ActivityIcon size={14} strokeWidth={2.5} />
+                </div>
+            );
+        }
+
+        // LOGIKA BARU UNTUK BENCHMARK (WARNA BIRU)
+        if (result.type === 'Benchmark') {
+            return (
+                <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-200 dark:border-blue-800/50 shadow-sm">
+                    <Target size={14} strokeWidth={2.5} />
+                </div>
+            );
+        }
+
+        return <img src={`https://ui-avatars.com/api/?name=${result.title}&background=random&color=fff&bold=true`} alt={result.title} className="w-7 h-7 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-sm" />;
+    };
+
     return (
         <div className="relative w-full max-w-[520px] hidden sm:block" ref={containerRef}>
             
-            {/* INPUT FIELD LANGSUNG DI NAVBAR */}
             <div className="relative flex items-center w-full h-9 bg-zinc-100/70 dark:bg-zinc-900/50 border border-zinc-200/80 dark:border-zinc-800 rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-zinc-400/20 focus-within:bg-white dark:focus-within:bg-[#0a0a0a] transition-all overflow-hidden group">
                 <Search size={14} className="text-zinc-400 absolute left-3 group-focus-within:text-zinc-900 dark:group-focus-within:text-zinc-100 transition-colors" />
                 
@@ -102,7 +130,6 @@ export default function GlobalSearch() {
                     autoComplete="off"
                 />
 
-                {/* Indikator Loading, Tombol X, atau Shortcut Cmd+K */}
                 <div className="absolute right-2 flex items-center gap-1">
                     {isLoading ? (
                         <Loader2 size={12} className="text-zinc-400 animate-spin mr-1" />
@@ -123,7 +150,6 @@ export default function GlobalSearch() {
                 </div>
             </div>
 
-            {/* DROPDOWN HASIL PENCARIAN (POPOVER) */}
             <Transition
                 show={isOpen && query.length > 0}
                 enter="transition ease-out duration-150"
@@ -147,33 +173,21 @@ export default function GlobalSearch() {
                                 </div>
                                 <ul className="space-y-0.5">
                                     {results.map((result) => (
-                                        <li key={`${result.type}-${result.id}`}>
+                                        <li key={result.id}>
                                             <button
                                                 onClick={() => handleSelect(result.url)}
                                                 className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors group text-left"
                                             >
-                                                <div className="flex items-center gap-2.5">
-                                                {result.avatar ? (
-                                                    // Jika ada foto dari database
-                                                    <img 
-                                                        src={result.avatar} 
-                                                        alt={result.title} 
-                                                        className="w-7 h-7 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-sm" 
-                                                    />
-                                                ) : (
-                                                    // Jika tidak ada foto, gunakan inisial nama seperti di fitur lain
-                                                    <img 
-                                                        src={`https://ui-avatars.com/api/?name=${result.title}&background=random&color=fff&bold=true`} 
-                                                        alt={result.title} 
-                                                        className="w-7 h-7 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-sm" 
-                                                    />
-                                                )}
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    
+                                                    {renderVisual(result)}
+
                                                     <div className="flex flex-col min-w-0">
                                                         <span className="text-[12px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">{result.title}</span>
                                                         <span className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">{result.subtitle} • {result.type}</span>
                                                     </div>
                                                 </div>
-                                                <ArrowRight size={12} className="text-zinc-300 dark:text-zinc-600 group-hover:text-zinc-500 dark:group-hover:text-zinc-400 transition-colors -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 shrink-0" />
+                                                <ArrowRight size={12} className="text-zinc-300 dark:text-zinc-600 group-hover:text-zinc-500 dark:group-hover:text-zinc-400 transition-colors -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 shrink-0 ml-2" />
                                             </button>
                                         </li>
                                     ))}

@@ -136,13 +136,23 @@ export default function StrainMonotony({ auth, weeksData, startDate, endDate }) 
                     </div>
                 </div>
 
-                {/* GRAFIK ANALISIS */}
+                <TrendChart 
+                    data={computedWeeks} 
+                    metricLabel={metricOptions.find(o => o.value === selectedMetric)?.label} 
+                />
+                <TrendChart 
+                    data={computedWeeks} 
+                    metricLabel={metricOptions.find(o => o.value === selectedMetric)?.label} 
+                />
+                <TrendChart 
+                    data={computedWeeks} 
+                    metricLabel={metricOptions.find(o => o.value === selectedMetric)?.label} 
+                />
                 <TrendChart 
                     data={computedWeeks} 
                     metricLabel={metricOptions.find(o => o.value === selectedMetric)?.label} 
                 />
 
-                {/* TABEL DATA MINGGUAN */}
                 <WeeklyTable 
                     weeks={computedWeeks} 
                     columns={renderColumns} 

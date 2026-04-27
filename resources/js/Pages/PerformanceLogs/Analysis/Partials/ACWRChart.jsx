@@ -78,8 +78,8 @@ export default function ACWRChart({ data, metricLabel }) {
                         
                         {/* METRIK GRAFIK DENGAN WARNA PREMIUM */}
                         <Bar yAxisId="left" dataKey="acute" name="Acute (Kelelahan)" barSize={28} fill="url(#colorAcute)" radius={[6, 6, 0, 0]} />
-                        <Line yAxisId="left" type="monotone" dataKey="chronic" name="Chronic (Kebugaran)" stroke="#0ea5e9" strokeWidth={3} dot={false} />
-                        <Line yAxisId="right" type="monotone" dataKey="acwr" name="ACWR (Rasio)" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#09090b', stroke: '#f43f5e' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#f43f5e' }} />
+                        <Line yAxisId="left" type="monotone" dataKey="chronic" name="Chronic (Kebugaran)" stroke="#0ea5e9" strokeWidth={1} dot={false} />
+                        <Line yAxisId="right" type="monotone" dataKey="acwr" name="ACWR (Rasio)" stroke="#f43f5e" strokeWidth={1} dot={{ r: 4, strokeWidth: 2, fill: '#09090b', stroke: '#f43f5e' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#f43f5e' }} />
                     </ComposedChart>
                 </ResponsiveContainer>
             </div>

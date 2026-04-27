@@ -60,7 +60,7 @@ export default function TimelineCard({ day, isLast }) {
     };
 
     return (
-        <div className="relative flex flex-col md:flex-row gap-3 md:gap-6 group z-10">
+        <div className="relative flex flex-col md:flex-row gap-3 md:gap-6 group">
             
             {/* Timeline Line Vertikal */}
             {!isLast && (
@@ -68,7 +68,7 @@ export default function TimelineCard({ day, isLast }) {
             )}
 
             {/* Bagian Kiri: Tanggal */}
-            <div className="md:w-[34px] shrink-0 flex items-end gap-2 md:block md:text-right z-10 pt-1 relative">
+            <div className="md:w-[34px] shrink-0 flex items-end gap-2 md:block md:text-right pt-1 relative">
                 {/* Tanda Hari Ini Monokrom */}
                 {isToday && (
                     <div className="absolute -top-3 md:-top-4 -left-2 md:-right-8 flex items-center gap-1.5 md:justify-end w-[100px]">
@@ -88,7 +88,7 @@ export default function TimelineCard({ day, isLast }) {
             </div>
 
             {/* Timeline Node Point (Titik Bulat) */}
-            <div className={`hidden md:flex relative z-10 mt-3.5 w-2.5 h-2.5 rounded-full border-[2px] transition-colors duration-300 shadow-sm
+            <div className={`hidden md:flex relative mt-3.5 w-2.5 h-2.5 rounded-full border-[2px] transition-colors duration-300 shadow-sm
                 ${isToday ? 'border-zinc-900 bg-white dark:border-zinc-100 dark:bg-zinc-950' : 
                   isTraining ? 'bg-zinc-900 border-zinc-900 dark:bg-zinc-100 dark:border-zinc-100' : 
                   isMatch ? 'bg-white border-zinc-900 dark:bg-[#09090b] dark:border-zinc-100' : 
@@ -96,7 +96,7 @@ export default function TimelineCard({ day, isLast }) {
             `} />
 
             {/* Card Container Utama */}
-            <div className={`flex-1 flex flex-col lg:flex-row lg:items-center gap-4 p-3.5 lg:p-4 rounded-xl border transition-all duration-300 relative z-10
+            <div className={`flex-1 flex flex-col lg:flex-row lg:items-center gap-4 p-3.5 lg:p-4 rounded-xl border transition-all duration-300 relative
                 ${isOff ? 'bg-zinc-50/50 dark:bg-zinc-900/20 border-zinc-200/50 dark:border-zinc-800/50 opacity-90' : 
                   isToday ? 'bg-zinc-50 dark:bg-zinc-900 border-zinc-400 dark:border-zinc-500 shadow-sm' :
                   'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-sm'}

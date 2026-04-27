@@ -57,7 +57,6 @@ class ClubAndPlayerSeeder extends Seeder
         ];
 
         // 3. Masukkan data pemain ke dalam database
-        // 3. Masukkan data pemain ke dalam database
         foreach ($players as $p) {
             Player::updateOrCreate(
                 [
@@ -67,11 +66,11 @@ class ClubAndPlayerSeeder extends Seeder
                 [
                     'name' => trim($p['name']),
                     'position' => $p['position'],
-                    // BUNGKUS KE DALAM KOLOM JSON 'highest_metrics'
-                    'highest_metrics' => json_encode([
-                        'max_velocity' => $p['highest_velocity'],
-                        'max_velocity_percent' => 100.00
-                    ])
+                    
+                    // HANYA SIMPAN HIGHEST VELOCITY
+                    'highest_metrics' => [
+                        'highest_velocity' => $p['highest_velocity']
+                    ]
                 ]
             );
         }

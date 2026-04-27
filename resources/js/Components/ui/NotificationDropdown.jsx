@@ -55,7 +55,7 @@ export default function NotificationDropdown() {
             {/* Tombol Lonceng dengan Badge Angka */}
             <button 
                 onClick={() => setIsOpen(!isOpen)}
-                className={`relative w-8 h-8 flex items-center justify-center rounded-md transition-all focus:outline-none shadow-none hover:shadow-sm ${
+                className={`relative z-50 w-8 h-8 flex items-center justify-center rounded-md transition-all focus:outline-none shadow-none hover:shadow-sm ${
                     isOpen 
                         ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' 
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-white dark:hover:bg-zinc-800'
