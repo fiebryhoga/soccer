@@ -6,6 +6,8 @@ import { ArrowLeft, Save, Loader2, Download, FileSpreadsheet, Trash2 } from 'luc
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { FIXED_EXCEL_COLUMNS } from '@/Constants/metrics';
 import ConfigurationHeader from './Partials/ConfigurationHeader';
+import TrainingMetricsTable from './Partials/TrainingMetricsTable';
+import MatchMetricsTable from './Partials/MatchMetricsTable';
 import MetricsTable from './Partials/MetricsTable';
 
 const POSITION_ORDER = { 'CB': 1, 'FB': 2, 'MF': 3, 'WF': 4, 'FW': 5 };
@@ -279,17 +281,29 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
                         errors={errors} 
                     />
 
-                    {/* Tabel Metrik Data */}
+                    
                     <div className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-950 p-4 pb-0">
-                        <MetricsTable 
-                            data={data}
-                            setData={setData}
-                            getAutoCalculatedValue={getAutoCalculatedValue}
-                            calculatePercentage={calculatePercentage}
-                            getColumnAverage={getColumnAverage}
-                            handlePaste={handlePaste}
-                            handleChange={handleChange}
-                        />
+                        {log.type === 'match' ? (
+                            <MatchMetricsTable 
+                                data={data}
+                                setData={setData}
+                                getAutoCalculatedValue={getAutoCalculatedValue}
+                                calculatePercentage={calculatePercentage}
+                                getColumnAverage={getColumnAverage}
+                                handlePaste={handlePaste}
+                                handleChange={handleChange}
+                            />
+                        ) : (
+                            <TrainingMetricsTable 
+                                data={data}
+                                setData={setData}
+                                getAutoCalculatedValue={getAutoCalculatedValue}
+                                calculatePercentage={calculatePercentage}
+                                getColumnAverage={getColumnAverage}
+                                handlePaste={handlePaste}
+                                handleChange={handleChange}
+                            />
+                        )}
                     </div>
 
                     {/* FOOTER ACTION BAR */}

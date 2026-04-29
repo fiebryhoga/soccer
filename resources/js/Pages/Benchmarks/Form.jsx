@@ -134,7 +134,7 @@ export default function BenchmarkForm({ auth, benchmark }) {
                             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60 bg-white dark:bg-[#09090b]">
                                 {POSITIONS.map((pos, idx) => (
                                     <tr key={pos} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors group">
-                                        <td className="p-3 border-r border-zinc-200 dark:border-zinc-800 font-black text-center sticky left-0 z-10 bg-white dark:bg-[#09090b] group-hover:bg-zinc-50 dark:group-hover:bg-zinc-900/50 shadow-[inset_-1px_0_0_0_#e4e4e7] dark:shadow-[inset_-1px_0_0_0_#27272a]">
+                                        <td className="p-3 border-r border-zinc-200 dark:border-zinc-800 semibold text-black dark:text-white text-center sticky left-0 z-10 bg-white dark:bg-[#09090b] group-hover:bg-zinc-50 dark:group-hover:bg-zinc-900/50 shadow-[inset_-1px_0_0_0_#e4e4e7] dark:shadow-[inset_-1px_0_0_0_#27272a]">
                                             {pos}
                                         </td>
                                         {BENCHMARK_COLUMNS.map(col => (
