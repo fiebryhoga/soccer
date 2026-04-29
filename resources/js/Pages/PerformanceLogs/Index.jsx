@@ -168,7 +168,7 @@ export default function PerformanceLogIndex({ auth, calendar, season_start_date 
                                     type="date" 
                                     value={tempDate}
                                     onChange={(e) => setTempDate(e.target.value)}
-                                    className="bg-transparent border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs font-mono font-bold rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-300 shadow-sm"
+                                    className="bg-transparent border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs font-bold rounded-lg py-2 px-3 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-300 shadow-sm dark:[color-scheme:dark]"
                                 />
                                 <button 
                                     onClick={saveStartDate} 

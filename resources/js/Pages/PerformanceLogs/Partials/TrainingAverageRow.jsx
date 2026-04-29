@@ -1,3 +1,5 @@
+// resources/js/Pages/PerformanceLogs/Partials/TrainingAverageRow.jsx
+
 import React from 'react';
 import { FIXED_EXCEL_COLUMNS } from '@/Constants/metrics';
 
@@ -39,17 +41,22 @@ const calculateLocalAverage = (playersGroup, colId, getAutoCalculatedValue) => {
     return Number.isInteger(avg) ? avg.toString() : avg.toFixed(1);
 };
 
-export default function TrainingAverageRow({ title, groupPlayers, isTeamAverage, actions }) {
-    const bgClass = isTeamAverage ? 'bg-zinc-50 dark:bg-zinc-950 bg-clip-padding' : 'bg-emerald-50/90 dark:bg-emerald-950/90 bg-clip-padding';
-    const borderClass = isTeamAverage ? 'border-zinc-200 dark:border-zinc-800' : 'border-emerald-200/60 dark:border-emerald-800/60';
-    const textClass = isTeamAverage ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-700 dark:text-emerald-400';
+// ==========================================
+// KOMPONEN RATA-RATA (DI-MEMOIZATION & PREMIUM MONOCHROME)
+// ==========================================
+const TrainingAverageRow = ({ title, groupPlayers, isTeamAverage, actions }) => {
+    // Styling Monochrome Premium (Menghapus total warna emerald)
+    const bgClass = isTeamAverage ? 'bg-zinc-50 dark:bg-[#111113] bg-clip-padding' : 'bg-zinc-100 dark:bg-zinc-900 bg-clip-padding';
+    const borderClass = 'border-zinc-200 dark:border-zinc-800';
+    const textClass = isTeamAverage ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-600 dark:text-zinc-300';
     
     return (
-        <tr className={isTeamAverage ? '' : 'bg-emerald-50/60 dark:bg-emerald-900/20 border-y border-emerald-200/60 dark:border-emerald-800/60'}>
-            <td colSpan="5" style={STICKY_COLS.footerSpan} className={`p-2 sticky z-20 ${bgClass}`}></td>
-            <td style={STICKY_COLS.c6} className={`p-2.5 font-black text-[10px] uppercase tracking-widest text-right pr-4 sticky z-20 shadow-[4px_0_12px_rgba(0,0,0,0.03)] border-r ${bgClass} ${textClass} ${borderClass}`}>
+        <tr className={isTeamAverage ? '' : 'bg-zinc-50/60 dark:bg-zinc-900/40 border-y border-zinc-200/60 dark:border-zinc-800/60'}>
+            <td colSpan="5" style={STICKY_COLS.footerSpan} className={`p-1.5 sticky z-20 border-r ${borderClass} ${bgClass}`}></td>
+            <td style={STICKY_COLS.c6} className={`p-2 font-black text-[9px] uppercase tracking-widest text-right pr-4 sticky z-20 shadow-[4px_0_12px_rgba(0,0,0,0.04)] border-r ${bgClass} ${textClass} ${borderClass}`}>
                 {title}
             </td>
+            
             {FIXED_EXCEL_COLUMNS.map(col => {
                 const distanceGroup = ['total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh'];
                 const hr4Group = ['hr_band_4_dist', 'hr_band_4_dur'];
@@ -83,22 +90,20 @@ export default function TrainingAverageRow({ title, groupPlayers, isTeamAverage,
                 }
                 
                 const isDist = checkIsDistanceGroup(col.id);
-                const cellTextClass = isTeamAverage ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-900 dark:text-emerald-300';
-                const cellBorderClass = isTeamAverage ? 'border-zinc-200 dark:border-zinc-800' : 'border-emerald-200/50 dark:border-emerald-800/50';
-                const cellBgClass = isDist ? (isTeamAverage ? 'bg-zinc-100/50 dark:bg-zinc-800/30' : 'bg-emerald-100/50 dark:bg-emerald-900/40') : '';
-
+                
                 return (
                     <React.Fragment key={`avg-${col.id}`}>
-                        <td className={`p-2 font-bold text-center border-l text-[11px] tabular-nums ${cellTextClass} ${cellBorderClass} ${cellBgClass}`}>
+                        {/* Ukuran di-press ke compact (p-1.5, text-[11px]) */}
+                        <td className={`p-1.5 font-bold text-center border-l text-[11px] tabular-nums ${isTeamAverage ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-600 dark:text-zinc-300'} ${borderClass} ${isDist ? (isTeamAverage ? 'bg-zinc-100/50 dark:bg-zinc-800/30' : 'bg-zinc-200/50 dark:bg-zinc-800/60') : ''}`}>
                             {avgValue}
                         </td>
                         {col.hasPercent && (
-                            <td className={`p-2 border-l ${cellBorderClass} ${isDist ? (isTeamAverage ? 'bg-zinc-100/80 dark:bg-zinc-800/40' : 'bg-emerald-100/80 dark:bg-emerald-900/50') : ''}`}>
+                            <td className={`p-1.5 border-l ${borderClass} ${isDist ? (isTeamAverage ? 'bg-zinc-100/80 dark:bg-zinc-800/40' : 'bg-zinc-200/80 dark:bg-zinc-800/70') : ''}`}>
                                 {hasValue && (
-                                    <div className="flex items-center justify-end gap-2">
-                                        <span className={`text-[10px] font-black w-8 text-right tabular-nums ${cellTextClass}`}>{avgPercent}%</span>
-                                        <div className={`w-12 h-1.5 rounded-full overflow-hidden ${isTeamAverage ? (isDist ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-zinc-200 dark:bg-zinc-800') : 'bg-emerald-200 dark:bg-emerald-900/80'}`}>
-                                            <div className={`h-full transition-all duration-500 rounded-full ${isTeamAverage ? (isDist ? 'bg-zinc-700 dark:bg-zinc-300' : 'bg-zinc-900 dark:bg-zinc-100') : 'bg-emerald-500 dark:bg-emerald-400'}`} style={{ width: `${Math.min(avgPercent, 100)}%` }}></div>
+                                    <div className="flex items-center justify-end gap-1.5 px-1">
+                                        <span className={`text-[9px] font-black w-7 text-right tabular-nums ${textClass}`}>{avgPercent}%</span>
+                                        <div className={`w-10 h-1 rounded-full overflow-hidden ${isTeamAverage ? (isDist ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-zinc-200 dark:bg-zinc-800') : 'bg-zinc-300 dark:bg-zinc-700'}`}>
+                                            <div className={`h-full transition-all duration-500 rounded-full ${isTeamAverage ? (isDist ? 'bg-zinc-700 dark:bg-zinc-300' : 'bg-zinc-900 dark:bg-zinc-100') : 'bg-zinc-600 dark:bg-zinc-400'}`} style={{ width: `${Math.min(avgPercent, 100)}%` }}></div>
                                         </div>
                                     </div>
                                 )}
@@ -107,7 +112,29 @@ export default function TrainingAverageRow({ title, groupPlayers, isTeamAverage,
                     </React.Fragment>
                 );
             })}
-            <td className={`p-2 border-l ${borderClass} ${bgClass}`}></td>
+            <td className={`p-1.5 border-l ${borderClass} ${bgClass}`}></td>
         </tr>
     );
-}
+};
+
+// OPTIMASI LEVEL DEWA
+const areEqual = (prev, next) => {
+    if (prev.title !== next.title) return false;
+    if (prev.groupPlayers.length !== next.groupPlayers.length) return false;
+
+    // Cek referensi objek metrics satu-satu untuk memastikan tak perlu kalkulasi ulang
+    for (let i = 0; i < prev.groupPlayers.length; i++) {
+        if (prev.groupPlayers[i].metrics !== next.groupPlayers[i].metrics) return false;
+        
+        // Cek juga centangnya (terutama untuk Team Average yang sensitif terhadap ini)
+        if (prev.groupPlayers[i].selected !== next.groupPlayers[i].selected ||
+            prev.groupPlayers[i].selected_hr4 !== next.groupPlayers[i].selected_hr4 ||
+            prev.groupPlayers[i].selected_hr5 !== next.groupPlayers[i].selected_hr5 ||
+            prev.groupPlayers[i].selected_pl !== next.groupPlayers[i].selected_pl) {
+            return false;
+        }
+    }
+    return true; 
+};
+
+export default React.memo(TrainingAverageRow, areEqual);

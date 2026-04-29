@@ -1,3 +1,5 @@
+// resources/js/Pages/PerformanceLogs/Partials/MatchMetricsTable.jsx
+
 import React, { useMemo, useRef } from 'react';
 import { Users, Plus } from 'lucide-react';
 import { MATCH_EXCEL_COLUMNS } from '@/Constants/metrics';
@@ -36,7 +38,6 @@ export default function MatchMetricsTable({ data, setData, getAutoCalculatedValu
         const newData = [...data.players_data];
         const player = newData[originalIndex];
         
-        // Logika Pintar: Ambil status dari JSON, jika undefined, cek apakah dia punya metrics tersimpan
         const hasData = player.metrics && Object.keys(player.metrics).some(k => !['selected', 'selected_hr4', 'selected_hr5', 'selected_pl'].includes(k) && player.metrics[k] !== '');
         const isPlaying = player.is_playing !== undefined ? player.is_playing : hasData;
 
@@ -108,7 +109,6 @@ export default function MatchMetricsTable({ data, setData, getAutoCalculatedValu
 
     const { groupedPlayers, visiblePlayers, benchedPlayers, playingPlayers } = useMemo(() => {
         const playersWithIndex = data.players_data.map((p, i) => {
-            // JIKA BELUM ADA DATA TERSIMPAN, PEMAIN MATCH OTOMATIS MASUK BENCH (is_playing: false)
             const hasData = p.metrics && Object.keys(p.metrics).some(k => !['selected', 'selected_hr4', 'selected_hr5', 'selected_pl'].includes(k) && p.metrics[k] !== '');
             const isPlaying = p.is_playing !== undefined ? p.is_playing : hasData;
             return { ...p, originalIndex: i, is_playing: isPlaying };
@@ -134,60 +134,61 @@ export default function MatchMetricsTable({ data, setData, getAutoCalculatedValu
     };
 
     return (
-        <div className="w-full space-y-3 mb-4">
+        <div className="w-full space-y-3 mb-6 mt-4">
             
-            {/* AREA SMART BENCH (Default Awal) */}
-            <div className="bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
+            {/* AREA SMART BENCH (Monochrome Premium) */}
+            <div className="bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
                     <div>
                         <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-tight flex items-center gap-2">
-                            <Users size={16} className="text-orange-500"/> Skuad Pertandingan (Bench)
+                            <Users size={16} className="text-zinc-500 dark:text-zinc-400"/> Skuad Pertandingan (Bench)
                         </h3>
-                        <p className="text-[11px] font-semibold text-zinc-500 mt-0.5">Pilih pemain yang tampil (Starter/Sub) untuk ditambahkan ke tabel matriks di bawah.</p>
+                        <p className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 mt-0.5">Pilih pemain yang tampil (Starter/Sub) untuk ditambahkan ke tabel matriks di bawah.</p>
                     </div>
-                    <div className="text-[10px] font-bold text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50 px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 uppercase tracking-widest">
-                        {benchedPlayers.length} Pemain di Bench
+                    <div className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-900 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 uppercase tracking-widest shadow-sm">
+                        {benchedPlayers.length} di Bench
                     </div>
                 </div>
 
                 {benchedPlayers.length > 0 ? (
-                    <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-300">
+                    <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-700">
                         {benchedPlayers.map(player => (
                             <button
                                 key={player.player_id}
                                 onClick={() => togglePlayStatus(player.originalIndex)}
                                 type="button"
-                                className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 hover:border-orange-500 hover:bg-orange-50 rounded-lg text-xs font-bold transition-all group shadow-sm"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800 hover:border-zinc-900 dark:hover:border-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-[11px] font-bold transition-all group shadow-sm"
                             >
-                                <span className="text-[9px] font-black text-zinc-400 group-hover:text-orange-400">{player.position}</span>
-                                <span className="text-zinc-700 group-hover:text-orange-700">{player.name}</span>
-                                <Plus size={14} className="text-zinc-400 group-hover:text-orange-500 transition-colors ml-1" strokeWidth={3}/>
+                                <span className="text-[9px] font-black text-zinc-400 dark:text-zinc-600 group-hover:text-zinc-900 dark:group-hover:text-zinc-100">{player.position}</span>
+                                <span className="text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100">{player.name}</span>
+                                <Plus size={12} className="text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors ml-0.5" strokeWidth={3}/>
                             </button>
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center p-4 text-[11px] font-bold uppercase tracking-widest text-emerald-600 border border-dashed border-emerald-200 bg-emerald-50/50 rounded-lg">
+                    <div className="text-center p-3 text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 border border-dashed border-zinc-300 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 rounded-lg">
                         Semua pemain telah masuk skuad aktif.
                     </div>
                 )}
             </div>
 
-            <div className="flex items-center justify-between px-1 mt-6">
+            {/* TABEL MATCH METRICS */}
+            <div className="flex items-center justify-between px-1 mt-6 mb-2">
                 <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-orange-600 dark:text-orange-500 tracking-tight">Metrik Pertandingan (Match)</h3>
-                    <span className="px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-[10px] font-bold text-orange-600 dark:text-orange-400">
+                    <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100 tracking-tight uppercase">Metrik Pertandingan (Match)</h3>
+                    <span className="px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 text-[9px] font-bold text-zinc-600 dark:text-zinc-400">
                         {playingPlayers.length} Main
                     </span>
                 </div>
             </div>
 
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto relative [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-zinc-50 [&::-webkit-scrollbar-thumb]:bg-zinc-300 [&::-webkit-scrollbar-thumb]:rounded-full pb-1">
+            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0a0a0a] shadow-sm overflow-hidden">
+                <div className="overflow-x-auto relative [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-zinc-50 dark:[&::-webkit-scrollbar-track]:bg-[#111113] [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-700 [&::-webkit-scrollbar-thumb]:rounded-full pb-1">
                     <table className="w-max min-w-full text-left whitespace-nowrap text-[10px] border-collapse tabular-nums">
                         
                         <MatchTableHeader data={data} actions={actions} />
 
-                        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60 bg-white dark:bg-zinc-950">
+                        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60 bg-white dark:bg-[#0a0a0a]">
                             {['CB', 'FB', 'MF', 'WF', 'FW', 'OTHER'].map(pos => {
                                 const groupPlayers = groupedPlayers[pos];
                                 if (!groupPlayers || groupPlayers.length === 0) return null;
@@ -202,7 +203,9 @@ export default function MatchMetricsTable({ data, setData, getAutoCalculatedValu
                                 );
                             })}
                         </tbody>
-                        <tfoot className="bg-zinc-50 border-t-2 border-zinc-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                        
+                        {/* FOOTER: Team Average */}
+                        <tfoot className="bg-zinc-50 dark:bg-[#111113] border-t-2 border-zinc-200 dark:border-zinc-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                             <MatchAverageRow title="Team Average" groupPlayers={playingPlayers} isTeamAverage={true} actions={actions} />
                         </tfoot>
                     </table>

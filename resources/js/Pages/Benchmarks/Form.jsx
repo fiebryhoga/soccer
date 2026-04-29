@@ -123,7 +123,7 @@ export default function BenchmarkForm({ auth, benchmark }) {
                         <table className="w-full text-left whitespace-nowrap text-[11px] border-collapse">
                             <thead className="bg-zinc-50 dark:bg-[#09090b]">
                                 <tr>
-                                    <th className="p-3 border-b border-r border-zinc-200 dark:border-zinc-800 font-black text-center text-zinc-500 sticky left-0 z-20 bg-zinc-50 dark:bg-[#09090b] shadow-[inset_-1px_0_0_0_#e4e4e7] dark:shadow-[inset_-1px_0_0_0_#27272a]">POS</th>
+                                    <th className="p-3 border-b border-r border-zinc-200 dark:border-zinc-800 font-black text-center text-zinc-500 sticky left-0 bg-zinc-50 dark:bg-[#09090b] shadow-[inset_-1px_0_0_0_#e4e4e7] dark:shadow-[inset_-1px_0_0_0_#27272a]">POS</th>
                                     {BENCHMARK_COLUMNS.map(col => (
                                         <th key={col.id} className="p-3 border-b border-r border-zinc-200 dark:border-zinc-800 font-black tracking-wider text-center text-zinc-700 dark:text-zinc-300">
                                             {col.label}

@@ -113,7 +113,7 @@ export default function Comparison({ auth, comparisonData, allSessions }) {
 
             <div className="max-w-[100rem] mx-auto pb-12 space-y-6">
                 
-                <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm p-5 lg:p-6 relative z-30 transition-colors">
+                <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm p-5 lg:p-6 relative transition-colors">
                     
                     <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <Search size={16} className="text-zinc-400" strokeWidth={2.5} /> 

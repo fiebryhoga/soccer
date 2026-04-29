@@ -1,6 +1,6 @@
 // resources/js/Layouts/Partials/Sidebar.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from '@inertiajs/react';
 import { 
     LayoutDashboard, 
@@ -46,7 +46,21 @@ const SidebarTooltip = ({ text, isVisible, isDanger = false }) => {
 
 export default function Sidebar({ isExpanded, setIsExpanded }) {
     
-    const [openMenus, setOpenMenus] = useState({});
+    // PERUBAHAN: Inisialisasi state dari localStorage agar tersimpan saat refresh
+    const [openMenus, setOpenMenus] = useState(() => {
+        try {
+            const savedMenus = localStorage.getItem('sidebarOpenMenus');
+            return savedMenus ? JSON.parse(savedMenus) : {};
+        } catch (error) {
+            console.error('Error reading localStorage', error);
+            return {};
+        }
+    });
+
+    // PERUBAHAN: Simpan ke localStorage setiap kali state openMenus berubah
+    useEffect(() => {
+        localStorage.setItem('sidebarOpenMenus', JSON.stringify(openMenus));
+    }, [openMenus]);
 
     const toggleMenu = (menuName) => {
         setOpenMenus(prev => ({
@@ -80,12 +94,11 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
             items: [
                 { name: 'Club Info', icon: Shield, href: route('club.index'), activeRule: 'club.*' },
                 
-                // --- BAGIAN YANG DIUBAH: Benchmarks sekarang menjadi Sub-menu ---
                 { 
                     name: 'Benchmarks', 
                     icon: Target, 
                     href: '#', 
-                    activeRule: 'benchmarks.*', // Rule ini akan aktif untuk semua rute benchmark
+                    activeRule: 'benchmarks.*', 
                     subItems: [
                         { name: 'Team Benchmark', icon: Users, href: route('benchmarks.index'), activeRule: 'benchmarks.index' },
                         { name: 'Player Benchmark', icon: User, href: route('players.benchmarks.index'), activeRule: 'players.benchmarks.*' }
@@ -122,7 +135,7 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
             </div>
 
             {/* Menu Navigasi Scrollable */}
-            <div className={`flex-1 overflow-y-auto py-4 space-y-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${isExpanded ? 'overflow-x-hidden' : 'overflow-x-visible'}`}>
+            <div className={`flex-1 py-4 space-y-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${isExpanded ? 'overflow-y-auto overflow-x-hidden' : 'overflow-visible'}`}>
                 {navGroups.map((group, groupIndex) => (
                     <div key={groupIndex} className="px-3">
                         {/* Group Label */}
@@ -144,8 +157,7 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                                 const isOpen = openMenus[item.name];
 
                                 return (
-                                    <div key={index} className="flex flex-col relative group/menu">
-                                        
+                                <div key={index} className="flex flex-col relative group/menu hover:z-50">                                        
                                         {/* Jika Menu Utama memiliki Sub-Menu */}
                                         {hasSubItems ? (
                                             <button
@@ -153,14 +165,17 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                                                     if (!isExpanded) setIsExpanded(true); 
                                                     toggleMenu(item.name);
                                                 }}
-                                                className={`relative flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 whitespace-nowrap group w-full ${
+                                                className={`relative flex items-center z-50 gap-3 px-3 py-3 rounded-lg transition-all duration-200 whitespace-nowrap group w-full ${
                                                     isActive 
                                                         ? 'bg-zinc-100/80 dark:bg-zinc-800/50 text-zinc-900 dark:text-zinc-50 font-medium' 
                                                         : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 hover:text-zinc-900 dark:hover:text-zinc-100'
                                                 } ${!isExpanded && 'justify-center px-0'}`}
+                                                
+                                                // Opsi Alternatif: Anda juga bisa pakai title bawaan HTML jika Tooltip kustom dirasa tumpang tindih dengan Popover Sub-menu
+                                                // title={!isExpanded ? item.name : undefined}
                                             >
                                                 {isActive && isExpanded && (
-                                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-zinc-900 dark:bg-zinc-100 rounded-r-full shadow-[0_0_8px_rgba(0,0,0,0.1)]"></div>
+                                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-red-900 dark:bg-zinc-100 rounded-r-full shadow-[0_0_8px_rgba(0,0,0,0.1)]"></div>
                                                 )}
 
                                                 <item.icon size={18} strokeWidth={isActive ? 2.2 : 2} className={`shrink-0 transition-transform duration-200 ${!isActive && 'group-hover:scale-110'}`} />
@@ -169,6 +184,11 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                                                     <span className="text-[13px]">{item.name}</span>
                                                     <ChevronDown size={14} className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'}`} />
                                                 </div>
+
+                                                {/* --- TAMBAHKAN KODE INI DI SINI --- */}
+                                                {/* Tooltip untuk Menu Utama yang memiliki Sub-menu */}
+                                                <SidebarTooltip text={item.name} isVisible={!isExpanded} />
+                                                
                                             </button>
                                         ) : (
                                             /* Render <Link> biasa untuk menu yang tidak memiliki sub-menu */
@@ -197,7 +217,7 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
 
                                         {/* RENDER SUB-ITEMS UNTUK MODE MINIMIZE (Hover Popover Keren) */}
                                         {hasSubItems && !isExpanded && (
-                                            <div className="absolute left-full ml-2 top-0 invisible opacity-0 group-hover/menu:visible group-hover/menu:opacity-100 translate-x-[-10px] group-hover/menu:translate-x-0 transition-all duration-200 z-50 pointer-events-auto">
+                                            <div className="absolute z-50 left-full ml-2 top-0 invisible opacity-0 group-hover/menu:visible group-hover/menu:opacity-100 translate-x-[-10px] group-hover/menu:translate-x-0 transition-all duration-200 pointer-events-auto">
                                                 <div className="bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800/80 rounded-xl shadow-xl p-2.5 min-w-[200px]">
                                                     {/* Ini bertindak sebagai judul/tooltip untuk parent */}
                                                     <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2 px-2 pb-2 border-b border-zinc-100 dark:border-zinc-800/60">
