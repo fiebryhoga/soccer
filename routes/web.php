@@ -6,6 +6,7 @@ use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\ClubController;
 use App\Http\Controllers\BenchmarkController;
+use App\Http\Controllers\PlayerBenchmarkController;
 use App\Http\Controllers\TrainingMetricController;
 use App\Http\Controllers\PerformanceLogController;
 use App\Http\Controllers\PerformanceAnalysisController;
@@ -107,6 +108,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/analysis/strain-monotony', [PerformanceAnalysisController::class, 'strainMonotony'])->name('analysis.strain');
     Route::get('/analysis/acwr', [PerformanceAnalysisController::class, 'acwr'])->name('analysis.acwr');
     Route::get('/analysis/comparison', [PerformanceAnalysisController::class, 'comparison'])->name('analysis.comparison');
+
+    Route::prefix('players-benchmarks')->group(function () {
+        Route::get('/', [PlayerBenchmarkController::class, 'index'])->name('players.benchmarks.index');
+        Route::get('/create', [PlayerBenchmarkController::class, 'create'])->name('players.benchmarks.create');
+        Route::post('/', [PlayerBenchmarkController::class, 'store'])->name('players.benchmarks.store');
+        Route::get('/{benchmark}/edit', [PlayerBenchmarkController::class, 'edit'])->name('players.benchmarks.edit');
+        Route::put('/{benchmark}', [PlayerBenchmarkController::class, 'update'])->name('players.benchmarks.update');
+        Route::post('/{benchmark}/duplicate', [PlayerBenchmarkController::class, 'duplicate'])->name('players.benchmarks.duplicate');
+        Route::delete('/{benchmark}', [PlayerBenchmarkController::class, 'destroy'])->name('players.benchmarks.destroy');
+    });
 
 });
 

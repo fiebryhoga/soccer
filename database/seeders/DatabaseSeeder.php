@@ -14,8 +14,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AdminSeeder::class,
             ClubAndPlayerSeeder::class,
-            BenchmarkSeeder::class,
-            PerformanceLogSeeder::class,
+            // BenchmarkSeeder::class,
+            // PerformanceLogSeeder::class,
         ]);
     }
 }

@@ -1,19 +1,18 @@
 // resources/js/Pages/PerformanceLogs/Show.jsx
 
 import React, { useMemo } from 'react';
-import { Head, useForm, Link } from '@inertiajs/react';
-import { ArrowLeft, Save, Loader2, Download, FileSpreadsheet, Trash2 } from 'lucide-react';
+import { Head, useForm, Link, router} from '@inertiajs/react';
+import { ArrowLeft, Save, Loader2, Download, FileSpreadsheet, Trash2, Target } from 'lucide-react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { FIXED_EXCEL_COLUMNS } from '@/Constants/metrics';
 import ConfigurationHeader from './Partials/ConfigurationHeader';
 import TrainingMetricsTable from './Partials/TrainingMetricsTable';
 import MatchMetricsTable from './Partials/MatchMetricsTable';
-import MetricsTable from './Partials/MetricsTable';
+import PlayerTrainingMetricsTable from './Partials/PlayerTrainingMetricsTable'; // Pastikan file ini sudah dibuat sebelumnya
 
-const POSITION_ORDER = { 'CB': 1, 'FB': 2, 'MF': 3, 'WF': 4, 'FW': 5 };
-
-export default function PerformanceLogShow({ auth, log, club, players, existing_metrics, benchmarks }) {
+export default function PerformanceLogShow({ auth, log, club, players, existing_metrics, team_benchmarks = [], player_benchmarks = [] }) {
     
+    // 1. Persiapan Data Pemain
     const sortedPlayersData = useMemo(() => {
         let mappedData = players.map(player => {
             const existing = existing_metrics[player.id];
@@ -34,6 +33,7 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
                 historical_highest: player.highest_metrics || {}, 
                 metrics: metricsData,
                 sort_order: existing?.sort_order ?? null,
+                is_playing: existing ? true : false, // Tambahan pengingat status main
                 
                 // State UI
                 selected: existing?.metrics?.selected ?? true,
@@ -53,48 +53,66 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
         return mappedData;
     }, [players, existing_metrics]);
 
-    // 2. Inisialisasi Form State
+    // 2. Inisialisasi Form State (SINTAKS ERROR DIPERBAIKI DI SINI)
     const { data, setData, post, processing, errors } = useForm({
         title: log.title || '',
         benchmark_id: log.benchmark_id || '',
-        players_data: sortedPlayersData,
+        player_benchmark_id: log.player_benchmark_id || '', // Koma yang hilang dan variabel sudah diperbaiki
+        players_data: sortedPlayersData
     });
 
-    const activeBenchmark = useMemo(() => {
-        if (!data.benchmark_id) return null;
-        return benchmarks?.find(b => b.id == data.benchmark_id);
-    }, [data.benchmark_id, benchmarks]);
-
-    // 3. Logika Kalkulasi Angka
-    const calculatePercentage = (colId, rawValue, position = null, playerHighest = null) => {
+    // 3. Logika Kalkulasi Angka (TEAM vs PLAYER)
+    const calculateTeamPercentage = (colId, rawValue, position = null, playerHighest = null) => {
         if (!rawValue || isNaN(rawValue) || rawValue === '') return 0;
         const numValue = parseFloat(rawValue);
 
-        if (colId === 'max_velocity') {
-            let targetHighest = parseFloat(playerHighest?.['highest_velocity']) || parseFloat(playerHighest?.['max_velocity']) || 0;
+        if (colId === 'max_velocity' || colId === 'highest_velocity') {
+            let targetHighest = parseFloat(playerHighest?.highest_velocity) || parseFloat(playerHighest?.max_velocity) || 0;
             if (targetHighest === 0) targetHighest = 100;
             return ((numValue / targetHighest) * 100).toFixed(1);
         }
         
         let targetValue = 100;
+        const activeTeamBenchmark = team_benchmarks.find(b => b.id === parseInt(data.benchmark_id));
         
-        if (activeBenchmark?.metrics?.[colId]) {
-             if (position && activeBenchmark.metrics[colId][position]) {
-                 targetValue = activeBenchmark.metrics[colId][position]; 
-             } else if (typeof activeBenchmark.metrics[colId] === 'number') {
-                 targetValue = activeBenchmark.metrics[colId]; 
+        if (activeTeamBenchmark?.metrics?.[colId]) {
+             if (position && activeTeamBenchmark.metrics[colId][position]) {
+                 targetValue = activeTeamBenchmark.metrics[colId][position]; 
+             } else if (typeof activeTeamBenchmark.metrics[colId] === 'number' || typeof activeTeamBenchmark.metrics[colId] === 'string') {
+                 targetValue = parseFloat(activeTeamBenchmark.metrics[colId]); 
              } else if (!position) {
-                 const vals = Object.values(activeBenchmark.metrics[colId]);
-                 targetValue = vals.slateuce((a,b)=>a+b,0) / vals.length || 100;
+                 const vals = Object.values(activeTeamBenchmark.metrics[colId]);
+                 targetValue = vals.reduce((a,b)=>parseFloat(a)+parseFloat(b),0) / vals.length || 100;
              }
         }
         
         return ((numValue / Math.max(targetValue, 0.01)) * 100).toFixed(1);
     };
 
+    const calculatePlayerPercentage = (colId, rawValue, position, historicalHighest, playerId) => {
+        if (!rawValue || rawValue === '-' || isNaN(rawValue)) return 0;
+        const numValue = parseFloat(rawValue);
+    
+        if (colId === 'max_velocity' || colId === 'highest_velocity') {
+            let maxTarget = parseFloat(historicalHighest?.highest_velocity) || parseFloat(historicalHighest?.max_velocity) || 0;
+            return ((numValue / Math.max(maxTarget || 100, 0.01)) * 100).toFixed(1);
+        }
+    
+        let targetValue = 100;
+        const activePlayerBenchmark = player_benchmarks.find(b => b.id === parseInt(data.player_benchmark_id));
+
+        // Cari target spesifik milik player_id ini di JSON Benchmark
+        if (activePlayerBenchmark?.metrics?.[playerId]?.[colId]) {
+            targetValue = parseFloat(activePlayerBenchmark.metrics[playerId][colId]);
+        } else {
+            return 0; // Jika belum di-set di benchmark, return 0%
+        }
+        return ((numValue / Math.max(targetValue, 0.01)) * 100).toFixed(1);
+    };
+
     const getAutoCalculatedValue = (player, colId) => {
         if (colId === 'total_18kmh') {
-            const hir = parseFloat(player.metrics?.hir_18_24_kmh) || 0;
+            const hir = parseFloat(player.metrics?.hir_18_24_kmh) || 0; // Menyesuaikan dengan UI terbaru
             const sprint = parseFloat(player.metrics?.sprint_distance) || 0;
             
             const total = hir + sprint;
@@ -103,7 +121,6 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
             return Number.isInteger(total) ? total.toString() : total.toFixed(1);
         }
         
-        // KALKULASI HIGHEST VELOCITY
         if (colId === 'highest_velocity') {
             const currentMax = parseFloat(player.metrics?.max_velocity) || 0;
             const historicalMax = parseFloat(player.historical_highest?.highest_velocity) || parseFloat(player.historical_highest?.max_velocity) || 0;
@@ -113,64 +130,6 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
         }
         
         return player.metrics?.[colId] ?? '';
-    };
-
-    const timeToSeconds = (timeStr) => {
-        if(!timeStr || typeof timeStr !== 'string' || !timeStr.includes('.')) return null;
-        const parts = timeStr.split('.').map(Number);
-        if(parts.length === 3) return parts[0]*3600 + parts[1]*60 + parts[2];
-        if(parts.length === 2) return parts[0]*60 + parts[1];
-        return null;
-    };
-
-    const secondsToTime = (totalSeconds) => {
-        if(totalSeconds === null || isNaN(totalSeconds)) return '-';
-        const h = Math.floor(totalSeconds / 3600);
-        const m = Math.floor((totalSeconds % 3600) / 60);
-        const s = Math.round(totalSeconds % 60);
-        return `${String(h).padStart(2, '0')}.${String(m).padStart(2, '0')}.${String(s).padStart(2, '0')}`;
-    };
-
-    const getColumnAverage = (colId) => {
-        if (colId === 'total_duration') return '-';
-
-        let targetPlayers = data.players_data;
-        
-        const distanceGroup = ['total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh'];
-        const hr4Group = ['hr_band_4_dist', 'hr_band_4_dur'];
-        const hr5Group = ['hr_band_5_dist', 'hr_band_5_dur'];
-        const plGroup = ['player_load'];
-
-        if (distanceGroup.includes(colId)) targetPlayers = data.players_data.filter(p => p.selected);
-        else if (hr4Group.includes(colId)) targetPlayers = data.players_data.filter(p => p.selected_hr4);
-        else if (hr5Group.includes(colId)) targetPlayers = data.players_data.filter(p => p.selected_hr5);
-        else if (plGroup.includes(colId)) targetPlayers = data.players_data.filter(p => p.selected_pl);
-
-        if (targetPlayers.length === 0) return '-';
-
-        if (colId === 'hr_band_4_dur' || colId === 'hr_band_5_dur') {
-            let sumSec = 0; let count = 0;
-            targetPlayers.forEach(p => {
-                const val = getAutoCalculatedValue(p, colId);
-                const sec = timeToSeconds(val);
-                if (sec !== null) { sumSec += sec; count++; }
-            });
-            return count > 0 ? secondsToTime(sumSec / count) : '-';
-        }
-
-        let sum = 0, count = 0;
-        targetPlayers.forEach(p => {
-            const val = parseFloat(getAutoCalculatedValue(p, colId));
-            if (!isNaN(val) && getAutoCalculatedValue(p, colId) !== '') { 
-                sum += val; count++; 
-            }
-        });
-        
-        if (count === 0) return '-';
-        const avg = sum / count;
-        
-        if (['max_velocity', 'highest_velocity'].includes(colId)) return avg.toFixed(2);
-        return Number.isInteger(avg) ? avg.toString() : avg.toFixed(1);
     };
 
     // 4. Handlers Input
@@ -219,7 +178,6 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
         setData('players_data', newData);
     };
 
-    // FUNGSI CLEAR ALL (Dipindahkan dari MetricsTable)
     const clearAll = () => {
         if (!confirm('Yakin ingin mengosongkan SELURUH data metrik di tabel ini?')) return;
         const newData = data.players_data.map(p => {
@@ -235,6 +193,12 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
     // 5. Submit Form
     const submit = (e) => {
         e.preventDefault();
+        
+        if(!data.player_benchmark_id) {
+            alert("Pilih Player Benchmark terlebih dahulu sebelum menyimpan!");
+            return;
+        }
+
         const finalizedData = data.players_data.map((player, index) => {
             const finalMetrics = { ...player.metrics };
             finalMetrics['hir_19_8_kmh'] = getAutoCalculatedValue(player, 'hir_19_8_kmh');
@@ -243,29 +207,30 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
             return { player_id: player.player_id, metrics: finalMetrics, sort_order: index };
         });
 
-        post(route('performance-logs.metrics.updateBulk', log.id), {
+        // KUNCI PERBAIKAN: Gunakan router.post, BUKAN post bawaan useForm
+        router.post(route('performance-logs.metrics.updateBulk', log.id), {
             title: data.title,
             benchmark_id: data.benchmark_id,
+            player_benchmark_id: data.player_benchmark_id, // Pastikan ini terkirim!
             players_data: finalizedData,
+        }, {
             preserveScroll: true,
         });
     };
 
     const formattedDate = new Date(log.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
     const displayTitle = log.title || `Session ${log.id}`;
-    const pageHeaderTitle = `Update ${displayTitle} - ${formattedDate}`;
 
     return (
         <AuthenticatedLayout 
             user={auth.user} 
-            headerTitle={pageHeaderTitle}
+            headerTitle={`Update ${displayTitle} - ${formattedDate}`}
             headerDescription="Edit metrik, sesuaikan acuan benchmark, dan simpan perubahan untuk memperbarui rekor pemain secara real-time."
         >
             <Head title={`${displayTitle} - ${formattedDate}`} />
 
             <div className="w-full pb-12 space-y-4 relative">
                 
-                {/* Tombol Kembali */}
                 <Link href={route('performance-logs.index')} className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors mb-2 tracking-wide group">
                     <ArrowLeft size={14} strokeWidth={2.5} className="group-hover:-translate-x-0.5 transition-transform" /> 
                     Kembali ke Timeline
@@ -273,13 +238,37 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
 
                 <form onSubmit={submit} className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm flex flex-col overflow-hidden transition-colors">
                     
-                    {/* Header Konfigurasi */}
+                    {/* Header Konfigurasi (Termasuk Team Benchmark) */}
                     <ConfigurationHeader 
                         data={data} 
                         setData={setData} 
-                        benchmarks={benchmarks} 
+                        benchmarks={team_benchmarks} 
                         errors={errors} 
                     />
+
+                    {/* SELECTOR PLAYER BENCHMARK (WAJIB) */}
+                    <div className="bg-amber-50/50 dark:bg-amber-900/10 px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 className="text-sm font-black text-amber-700 dark:text-amber-500 uppercase tracking-widest flex items-center gap-2">
+                                <Target size={18} /> Acuan Target Personal (Player Benchmark)
+                            </h3>
+                            <p className="text-[11px] font-semibold text-amber-600/70 mt-0.5">Wajib dipilih agar sistem dapat mengalkulasi persentase pencapaian individu.</p>
+                        </div>
+                        <div className="w-full sm:w-1/3">
+                            <select 
+                                required
+                                value={data.player_benchmark_id}
+                                onChange={e => setData('player_benchmark_id', e.target.value)}
+                                className="w-full bg-white dark:bg-zinc-900 border border-amber-200 dark:border-amber-700/50 rounded-lg text-sm font-bold px-4 py-2 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-500 outline-none shadow-sm cursor-pointer"
+                            >
+                                <option value="" disabled>-- Wajib Pilih Target Individu --</option>
+                                {player_benchmarks?.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                            </select>
+                            {errors.player_benchmark_id && <span className="text-red-500 text-xs mt-1">{errors.player_benchmark_id}</span>}
+                        </div>
+                    </div>
 
                     
                     <div className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-950 p-4 pb-0">
@@ -288,28 +277,44 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
                                 data={data}
                                 setData={setData}
                                 getAutoCalculatedValue={getAutoCalculatedValue}
-                                calculatePercentage={calculatePercentage}
-                                getColumnAverage={getColumnAverage}
+                                calculatePercentage={calculateTeamPercentage}
                                 handlePaste={handlePaste}
                                 handleChange={handleChange}
                             />
                         ) : (
-                            <TrainingMetricsTable 
-                                data={data}
-                                setData={setData}
-                                getAutoCalculatedValue={getAutoCalculatedValue}
-                                calculatePercentage={calculatePercentage}
-                                getColumnAverage={getColumnAverage}
-                                handlePaste={handlePaste}
-                                handleChange={handleChange}
-                            />
+                            <>
+                                {/* TABEL 1: TEAM BENCHMARK */}
+                                <TrainingMetricsTable 
+                                    data={data}
+                                    setData={setData}
+                                    getAutoCalculatedValue={getAutoCalculatedValue}
+                                    calculatePercentage={calculateTeamPercentage}
+                                    handleChange={handleChange}
+                                />
+
+                                {/* TABEL 2: PLAYER BENCHMARK (Ditampilkan jika ID Benchmark sudah dipilih) */}
+                                {data.player_benchmark_id ? (
+                                    <PlayerTrainingMetricsTable 
+                                        data={data}
+                                        setData={setData}
+                                        getAutoCalculatedValue={getAutoCalculatedValue}
+                                        calculatePercentage={calculatePlayerPercentage} // <-- Kunci perbedaannya ada di sini
+                                        handleChange={handleChange}
+                                    />
+                                ) : (
+                                    <div className="my-10 p-8 border-2 border-dashed border-amber-200 dark:border-amber-900/50 rounded-xl text-center bg-amber-50/30 dark:bg-amber-900/5">
+                                        <Target size={32} className="mx-auto text-amber-400/50 mb-3" />
+                                        <h4 className="text-sm font-bold text-amber-600 dark:text-amber-500">Tabel Kalkulasi Individu Disembunyikan</h4>
+                                        <p className="text-xs text-amber-600/70 mt-1 font-semibold">Tabel kalkulasi individual akan muncul setelah Anda memilih <strong className="text-amber-700 dark:text-amber-400">Acuan Target Personal</strong> di bagian atas.</p>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
 
                     {/* FOOTER ACTION BAR */}
                     <div className="p-4 bg-zinc-50/80 dark:bg-zinc-900/50 backdrop-blur-sm flex flex-col md:flex-row justify-between items-center gap-4 border-t border-zinc-200 dark:border-zinc-800">
                         
-                        {/* Tombol Export */}
                         <div className="flex w-full md:w-auto gap-3">
                             <a 
                                 href={route('performance-logs.export.pdf', log.id)} 
@@ -326,11 +331,9 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
                             </a>
                         </div>
 
-                        {/* Aksi Kanan: Kosongkan & Simpan */}
                         <div className="flex w-full md:w-auto items-center gap-3">
                             {processing && <span className="text-[10px] font-black text-zinc-500 animate-pulse uppercase tracking-widest hidden md:inline-block mr-2">Menyimpan...</span>}
                             
-                            {/* Tombol Kosongkan Tabel dipindah kesini */}
                             <button 
                                 type="button" 
                                 onClick={clearAll} 

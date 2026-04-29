@@ -20,6 +20,7 @@ class Player extends Model
 
     protected $casts = [
         'highest_metrics' => 'array',
+        'benchmark_metrics' => 'array',
     ];
 
     public function club()

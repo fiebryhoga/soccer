@@ -11,7 +11,7 @@ class BenchmarkController extends Controller
 {
     public function index() {
         return inertia('Benchmarks/Index', [
-            'benchmarks' => Benchmark::latest()->get(),
+            'benchmarks' => Benchmark::where('target_type', 'team')->latest()->get(),
         ]);
     }
 

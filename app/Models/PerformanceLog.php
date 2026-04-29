@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class PerformanceLog extends Model
 {
     protected $fillable = [
-        'club_id', 'date', 'type', 'title', 'description', 'selected_metrics', 'tag', 'benchmark_id'
+        'club_id', 'date', 'type', 'title', 'description', 'selected_metrics', 'tag', 'benchmark_id, player_benchmark_id'
     ];
 
     // Otomatis ubah JSON ke Array PHP
@@ -17,6 +17,10 @@ class PerformanceLog extends Model
 
     public function benchmark() {
         return $this->belongsTo(Benchmark::class);
+    }
+
+    public function playerBenchmark() {
+        return $this->belongsTo(Benchmark::class, 'player_benchmark_id');
     }
 
     public function playerMetrics()

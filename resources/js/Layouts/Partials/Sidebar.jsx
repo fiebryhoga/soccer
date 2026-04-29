@@ -7,7 +7,9 @@ import {
     ShieldCheck,
     Shield, 
     Activity, 
-    Settings, 
+    Settings,
+    User,
+    Users,
     PanelLeftClose,
     Calendar,
     PanelLeftOpen,
@@ -77,9 +79,20 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
             label: 'Management',
             items: [
                 { name: 'Club Info', icon: Shield, href: route('club.index'), activeRule: 'club.*' },
-                { name: 'Benchmarks', icon: Target, href: route('benchmarks.index'), activeRule: 'benchmarks.*' },
+                
+                // --- BAGIAN YANG DIUBAH: Benchmarks sekarang menjadi Sub-menu ---
+                { 
+                    name: 'Benchmarks', 
+                    icon: Target, 
+                    href: '#', 
+                    activeRule: 'benchmarks.*', // Rule ini akan aktif untuk semua rute benchmark
+                    subItems: [
+                        { name: 'Team Benchmark', icon: Users, href: route('benchmarks.index'), activeRule: 'benchmarks.index' },
+                        { name: 'Player Benchmark', icon: User, href: route('players.benchmarks.index'), activeRule: 'players.benchmarks.*' }
+                    ]
+                },
+                
                 { name: 'Admins', icon: ShieldCheck, href: route('admins.index'), activeRule: 'admins.*' },
-                // { name: 'Settings', icon: Settings, href: '#', activeRule: 'settings.*' },
             ]
         }
     ];
