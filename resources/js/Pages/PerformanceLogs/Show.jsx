@@ -4,20 +4,25 @@ import React, { useMemo } from 'react';
 import { Head, useForm, Link, router} from '@inertiajs/react';
 import { ArrowLeft, Save, Loader2, Download, FileSpreadsheet, Trash2, Target } from 'lucide-react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { FIXED_EXCEL_COLUMNS } from '@/Constants/metrics';
+import { FIXED_EXCEL_COLUMNS, MATCH_EXCEL_COLUMNS } from '@/Constants/metrics';
 import ConfigurationHeader from './Partials/ConfigurationHeader';
 import TrainingMetricsTable from './Partials/TrainingMetricsTable';
 import MatchMetricsTable from './Partials/MatchMetricsTable';
 import PlayerTrainingMetricsTable from './Partials/PlayerTrainingMetricsTable'; // Pastikan file ini sudah dibuat sebelumnya
+import PlayerMatchMetricsTable from './Partials/PlayerMatchMetricsTable';
 
 export default function PerformanceLogShow({ auth, log, club, players, existing_metrics, team_benchmarks = [], player_benchmarks = [] }) {
+    
+    const activeColumns = log.type === 'match' ? MATCH_EXCEL_COLUMNS : FIXED_EXCEL_COLUMNS;
     
     // 1. Persiapan Data Pemain
     const sortedPlayersData = useMemo(() => {
         let mappedData = players.map(player => {
             const existing = existing_metrics[player.id];
             let metricsData = {};
-            FIXED_EXCEL_COLUMNS.forEach(col => { metricsData[col.id] = existing?.metrics?.[col.id] || ''; });
+            
+            // Baca data dari database sesuai daftar kolom aktif (Match/Training)
+            activeColumns.forEach(col => { metricsData[col.id] = existing?.metrics?.[col.id] || ''; });
             
             // Simpan status centang ke dalam JSON
             metricsData['selected'] = existing?.metrics?.selected ?? true;
@@ -33,9 +38,8 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
                 historical_highest: player.highest_metrics || {}, 
                 metrics: metricsData,
                 sort_order: existing?.sort_order ?? null,
-                is_playing: existing ? true : false, // Tambahan pengingat status main
+                is_playing: existing ? true : false,
                 
-                // State UI
                 selected: existing?.metrics?.selected ?? true,
                 selected_hr4: existing?.metrics?.selected_hr4 ?? true,
                 selected_hr5: existing?.metrics?.selected_hr5 ?? true,
@@ -51,7 +55,7 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
         });
 
         return mappedData;
-    }, [players, existing_metrics]);
+    }, [players, existing_metrics, activeColumns]);
 
     // 2. Inisialisasi Form State (SINTAKS ERROR DIPERBAIKI DI SINI)
     const { data, setData, post, processing, errors } = useForm({
@@ -182,7 +186,8 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
         if (!confirm('Yakin ingin mengosongkan SELURUH data metrik di tabel ini?')) return;
         const newData = data.players_data.map(p => {
             const newMetrics = { ...p.metrics };
-            FIXED_EXCEL_COLUMNS.forEach(col => {
+            // Kosongkan sesuai kolom yang sedang aktif
+            activeColumns.forEach(col => {
                 if (!['total_18kmh', 'highest_velocity'].includes(col.id)) newMetrics[col.id] = '';
             });
             return { ...p, metrics: newMetrics };
@@ -287,14 +292,33 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
                     
                     <div className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-950 p-4 pb-0">
                         {log.type === 'match' ? (
-                            <MatchMetricsTable 
-                                data={data}
-                                setData={setData}
-                                getAutoCalculatedValue={getAutoCalculatedValue}
-                                calculatePercentage={calculateTeamPercentage}
-                                handlePaste={handlePaste}
-                                handleChange={handleChange}
-                            />
+                            <>
+                                {/* TABEL 1: MATCH TEAM BENCHMARK */}
+                                <MatchMetricsTable 
+                                    data={data}
+                                    setData={setData}
+                                    getAutoCalculatedValue={getAutoCalculatedValue}
+                                    calculatePercentage={calculateTeamPercentage}
+                                    handleChange={handleChange}
+                                />
+
+                                {/* TABEL 2: MATCH PLAYER BENCHMARK (Ditampilkan jika ID Benchmark sudah dipilih) */}
+                                {data.player_benchmark_id ? (
+                                    <PlayerMatchMetricsTable 
+                                        data={data}
+                                        setData={setData}
+                                        getAutoCalculatedValue={getAutoCalculatedValue}
+                                        calculatePercentage={calculatePlayerPercentage} // <-- Parameter persentase khusus pemain
+                                        handleChange={handleChange}
+                                    />
+                                ) : (
+                                    <div className="my-10 p-8 border-2 border-dashed border-amber-200 dark:border-amber-900/50 rounded-xl text-center bg-amber-50/30 dark:bg-amber-900/5">
+                                        <Target size={32} className="mx-auto text-amber-400/50 mb-3" />
+                                        <h4 className="text-sm font-bold text-amber-600 dark:text-amber-500">Tabel Kalkulasi Individu Disembunyikan</h4>
+                                        <p className="text-xs text-amber-600/70 mt-1 font-semibold">Tabel kalkulasi individual akan muncul setelah Anda memilih <strong className="text-amber-700 dark:text-amber-400">Acuan Target Personal</strong> di bagian atas.</p>
+                                    </div>
+                                )}
+                            </>
                         ) : (
                             <>
                                 {/* TABEL 1: TEAM BENCHMARK */}

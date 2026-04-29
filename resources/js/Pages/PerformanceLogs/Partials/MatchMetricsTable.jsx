@@ -1,124 +1,51 @@
-// resources/js/Pages/PerformanceLogs/Partials/MatchMetricsTable.jsx
-
 import React, { useMemo, useRef } from 'react';
-import { GripVertical, Lock, CheckSquare, Square, Eraser, CheckCircle2, MinusCircle, Activity } from 'lucide-react';
+import { Users, Plus } from 'lucide-react';
+import { MATCH_EXCEL_COLUMNS } from '@/Constants/metrics';
+import MatchTableHeader from './MatchTableHeader';
+import MatchPlayerRow from './MatchPlayerRow';
+import MatchAverageRow from './MatchAverageRow';
 
-// ==============================================================================
-// 1. CONFIGURATION & CONSTANTS
-// ==============================================================================
-const STICKY_COLS = {
-    c1: { left: 0, width: 40, minWidth: 40, maxWidth: 40, boxSizing: 'border-box' },
-    c2: { left: 40, width: 50, minWidth: 50, maxWidth: 50, boxSizing: 'border-box' }, // Diperlebar untuk 2 Ikon
-    c3: { left: 90, width: 40, minWidth: 40, maxWidth: 40, boxSizing: 'border-box' },
-    c4: { left: 130, width: 50, minWidth: 50, maxWidth: 50, boxSizing: 'border-box' },
-    c5: { left: 180, width: 40, minWidth: 40, maxWidth: 40, boxSizing: 'border-box' },
-    c6: { left: 220, width: 180, minWidth: 180, maxWidth: 180, boxSizing: 'border-box' },
-    superHeader: { left: 0 },
-    footerSpan: { left: 0 }
-};
-
-const MATCH_EXCEL_COLUMNS = [
-    { id: 'duration_1st', label: '1 ST', hasPercent: false },
-    { id: 'duration_2nd', label: '2 ND', hasPercent: false },
-    { id: 'total_distance', label: 'Total Distance', hasPercent: true },
-    { id: 'dist_per_min', label: 'Distance/min', hasPercent: true },
-    { id: 'distance_1st', label: 'Dist 1 ST', hasPercent: false },
-    { id: 'distance_2nd', label: 'Dist 2 ND', hasPercent: false },
-    { id: 'hir_18_24_kmh', label: 'HIR 18-24.51', hasPercent: true },
-    { id: 'sprint_distance', label: 'SPRINT 24.52~', hasPercent: true },
-    { id: 'total_18kmh', label: 'Total 18 Km/h~', hasPercent: true },
-    { id: 'accels', label: 'Accels >3m/s/s', hasPercent: false },
-    { id: 'decels', label: 'Decels >3m/s/s', hasPercent: false },
-    { id: 'hr_band_4_dist', label: 'HR Band 4 Dist', hasPercent: false },
-    { id: 'hr_band_4_dur', label: 'HR Band 4 Dur', hasPercent: false },
-    { id: 'hr_band_5_dist', label: 'HR Band 5 Dist', hasPercent: false },
-    { id: 'hr_band_5_dur', label: 'HR Band 5 Dur', hasPercent: false },
-    { id: 'max_velocity', label: 'Max Velocity', hasPercent: true },
-    { id: 'highest_velocity', label: 'Highest Vel', hasPercent: false },
-    { id: 'player_load', label: 'Player Load', hasPercent: true }
-];
-
-const checkIsDistanceGroup = (colId) => ['hir_18_24_kmh', 'sprint_distance', 'total_18kmh'].includes(colId);
-
-// Helper Fungsi Kalkulasi Rata-rata Lokal
-const calculateLocalAverage = (playersGroup, colId, getAutoCalculatedValue) => {
-    let sum = 0; let count = 0; let isTime = false;
-    playersGroup.forEach(p => {
-        const val = getAutoCalculatedValue(p, colId);
-        if (val === '-' || val === '' || val == null) return;
-        
-        if (typeof val === 'string' && val.includes('.')) {
-            const parts = val.split('.');
-            if (parts.length === 3) {
-                isTime = true;
-                sum += parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
-                count++;
-                return;
-            }
-        }
-        const num = parseFloat(val);
-        if (!isNaN(num)) { sum += num; count++; }
-    });
-
-    if (count === 0) return '-';
-    if (isTime) {
-        const avgSeconds = Math.round(sum / count);
-        const h = Math.floor(avgSeconds / 3600);
-        const m = Math.floor((avgSeconds % 3600) / 60);
-        const s = avgSeconds % 60;
-        return `${String(h).padStart(2, '0')}.${String(m).padStart(2, '0')}.${String(s).padStart(2, '0')}`;
-    }
-    const avg = sum / count;
-    return Number.isInteger(avg) ? avg.toString() : avg.toFixed(1);
-};
-
-
-// ==============================================================================
-// 2. MAIN COMPONENT (PARENT)
-// ==============================================================================
 export default function MatchMetricsTable({ data, setData, getAutoCalculatedValue, calculatePercentage, handleChange }) {
     
-    const dragItem = useRef();
-    const dragOverItem = useRef();
+    const dragItem = useRef(); const dragOverItem = useRef();
 
-    // -- STATE ACTIONS & LOGIC --
     const handleDragStart = (e, originalIndex) => { dragItem.current = originalIndex; };
     const handleDragEnter = (e, originalIndex) => { dragOverItem.current = originalIndex; };
-    
     const handleDragEnd = () => {
         if (dragItem.current !== undefined && dragOverItem.current !== undefined && dragItem.current !== dragOverItem.current) {
-            const dragIdx = dragItem.current;
-            const overIdx = dragOverItem.current;
-            
+            const dragIdx = dragItem.current; const overIdx = dragOverItem.current;
             const copyListItems = [...data.players_data];
-            const draggedPlayer = copyListItems[dragIdx];
-            const targetPlayer = copyListItems[overIdx];
+            const draggedPlayer = copyListItems[dragIdx]; const targetPlayer = copyListItems[overIdx];
 
-            // NORMALISASI: Bersihkan spasi, samakan huruf besar, dan pastikan status boolean terbaca benar
             const dragPos = String(draggedPlayer.position || 'OTHER').trim().toUpperCase();
             const targetPos = String(targetPlayer.position || 'OTHER').trim().toUpperCase();
-            
-            // Jika is_playing tidak false (bisa true atau undefined), berarti dia sedang Main
             const isDragPlaying = draggedPlayer.is_playing !== false; 
             const isTargetPlaying = targetPlayer.is_playing !== false;
 
-            // VALIDASI: Hanya bisa geser jika Posisi Sama dan Status Main Sama
             if (dragPos === targetPos && isDragPlaying === isTargetPlaying) {
-                copyListItems.splice(dragIdx, 1);
-                copyListItems.splice(overIdx, 0, draggedPlayer);
+                copyListItems.splice(dragIdx, 1); copyListItems.splice(overIdx, 0, draggedPlayer);
                 setData('players_data', copyListItems);
             } else {
-                let statusMsg = isDragPlaying ? "Tim Utama" : "Bench";
-                alert(`Gagal: Anda hanya bisa menggeser sesama posisi ${dragPos} di dalam status ${statusMsg}.`);
+                alert(`Gagal: Hanya bisa menggeser sesama posisi ${dragPos}.`);
             }
         }
-        dragItem.current = undefined;
-        dragOverItem.current = undefined;
+        dragItem.current = undefined; dragOverItem.current = undefined;
     };
 
     const togglePlayStatus = (originalIndex) => {
         const newData = [...data.players_data];
-        newData[originalIndex].is_playing = newData[originalIndex].is_playing === false ? true : false;
+        const player = newData[originalIndex];
+        
+        // Logika Pintar: Ambil status dari JSON, jika undefined, cek apakah dia punya metrics tersimpan
+        const hasData = player.metrics && Object.keys(player.metrics).some(k => !['selected', 'selected_hr4', 'selected_hr5', 'selected_pl'].includes(k) && player.metrics[k] !== '');
+        const isPlaying = player.is_playing !== undefined ? player.is_playing : hasData;
+
+        if (isPlaying) {
+            if (!confirm(`Kembalikan "${player.name}" ke Bench? Data tidak akan dihitung di tabel.`)) return;
+            player.is_playing = false;
+        } else {
+            player.is_playing = true;
+        }
         setData('players_data', newData);
     };
 
@@ -136,13 +63,13 @@ export default function MatchMetricsTable({ data, setData, getAutoCalculatedValu
     };
 
     const clearColumn = (colId, colName) => {
-        if (!confirm(`Yakin ingin mengosongkan seluruh data pada kolom "${colName}"?`)) return;
+        if (!confirm(`Kosongkan data kolom "${colName}"?`)) return;
         const newData = data.players_data.map(p => { const newMetrics = { ...p.metrics }; newMetrics[colId] = ''; return { ...p, metrics: newMetrics }; });
         setData('players_data', newData);
     };
 
     const clearRow = (originalIndex, playerName) => {
-        if (!confirm(`Yakin mengosongkan data metrik "${playerName}"?`)) return;
+        if (!confirm(`Kosongkan data "${playerName}"?`)) return;
         const newData = [...data.players_data];
         const newMetrics = { ...newData[originalIndex].metrics };
         MATCH_EXCEL_COLUMNS.forEach(col => { if (!['total_18kmh', 'highest_velocity'].includes(col.id)) newMetrics[col.id] = ''; });
@@ -150,7 +77,6 @@ export default function MatchMetricsTable({ data, setData, getAutoCalculatedValu
         setData('players_data', newData);
     };
 
-    // Paste Cerdas: Mengisi Excel berdasarkan urutan Visual (termasuk yang digrup posisi)
     const handleLocalPaste = (e, visibleIndex, colId) => {
         e.preventDefault();
         const pasteData = e.clipboardData.getData('text');
@@ -180,9 +106,14 @@ export default function MatchMetricsTable({ data, setData, getAutoCalculatedValu
         setData('players_data', newData);
     };
 
-    // -- GROUPING LOGIC --
     const { groupedPlayers, visiblePlayers, benchedPlayers, playingPlayers } = useMemo(() => {
-        const playersWithIndex = data.players_data.map((p, i) => ({ ...p, originalIndex: i, is_playing: p.is_playing !== false }));
+        const playersWithIndex = data.players_data.map((p, i) => {
+            // JIKA BELUM ADA DATA TERSIMPAN, PEMAIN MATCH OTOMATIS MASUK BENCH (is_playing: false)
+            const hasData = p.metrics && Object.keys(p.metrics).some(k => !['selected', 'selected_hr4', 'selected_hr5', 'selected_pl'].includes(k) && p.metrics[k] !== '');
+            const isPlaying = p.is_playing !== undefined ? p.is_playing : hasData;
+            return { ...p, originalIndex: i, is_playing: isPlaying };
+        });
+
         const playing = playersWithIndex.filter(p => p.is_playing);
         const benched = playersWithIndex.filter(p => !p.is_playing);
 
@@ -196,7 +127,6 @@ export default function MatchMetricsTable({ data, setData, getAutoCalculatedValu
         return { groupedPlayers: groups, visiblePlayers: visible, benchedPlayers: benched, playingPlayers: playing };
     }, [data.players_data]);
 
-    // Bundle semua actions agar mudah dikirim ke Partial Components
     const actions = {
         handleDragStart, handleDragEnter, handleDragEnd, togglePlayerSelection, 
         togglePlayStatus, clearRow, clearColumn, toggleSelectAll, 
@@ -205,322 +135,79 @@ export default function MatchMetricsTable({ data, setData, getAutoCalculatedValu
 
     return (
         <div className="w-full space-y-3 mb-4">
-            <div className="flex items-center justify-between px-1">
+            
+            {/* AREA SMART BENCH (Default Awal) */}
+            <div className="bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-tight flex items-center gap-2">
+                            <Users size={16} className="text-orange-500"/> Skuad Pertandingan (Bench)
+                        </h3>
+                        <p className="text-[11px] font-semibold text-zinc-500 mt-0.5">Pilih pemain yang tampil (Starter/Sub) untuk ditambahkan ke tabel matriks di bawah.</p>
+                    </div>
+                    <div className="text-[10px] font-bold text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50 px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 uppercase tracking-widest">
+                        {benchedPlayers.length} Pemain di Bench
+                    </div>
+                </div>
+
+                {benchedPlayers.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-300">
+                        {benchedPlayers.map(player => (
+                            <button
+                                key={player.player_id}
+                                onClick={() => togglePlayStatus(player.originalIndex)}
+                                type="button"
+                                className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 hover:border-orange-500 hover:bg-orange-50 rounded-lg text-xs font-bold transition-all group shadow-sm"
+                            >
+                                <span className="text-[9px] font-black text-zinc-400 group-hover:text-orange-400">{player.position}</span>
+                                <span className="text-zinc-700 group-hover:text-orange-700">{player.name}</span>
+                                <Plus size={14} className="text-zinc-400 group-hover:text-orange-500 transition-colors ml-1" strokeWidth={3}/>
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center p-4 text-[11px] font-bold uppercase tracking-widest text-emerald-600 border border-dashed border-emerald-200 bg-emerald-50/50 rounded-lg">
+                        Semua pemain telah masuk skuad aktif.
+                    </div>
+                )}
+            </div>
+
+            <div className="flex items-center justify-between px-1 mt-6">
                 <div className="flex items-center gap-2">
                     <h3 className="text-sm font-bold text-orange-600 dark:text-orange-500 tracking-tight">Metrik Pertandingan (Match)</h3>
                     <span className="px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-[10px] font-bold text-orange-600 dark:text-orange-400">
-                        {playingPlayers.length} Main | {benchedPlayers.length} Bench
+                        {playingPlayers.length} Main
                     </span>
                 </div>
             </div>
 
             <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto relative [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-zinc-50 dark:[&::-webkit-scrollbar-track]:bg-zinc-950 [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-700 [&::-webkit-scrollbar-thumb]:rounded-full pb-1">
+                <div className="overflow-x-auto relative [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-zinc-50 [&::-webkit-scrollbar-thumb]:bg-zinc-300 [&::-webkit-scrollbar-thumb]:rounded-full pb-1">
                     <table className="w-max min-w-full text-left whitespace-nowrap text-[10px] border-collapse tabular-nums">
                         
                         <MatchTableHeader data={data} actions={actions} />
 
                         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60 bg-white dark:bg-zinc-950">
-                            {/* 1. RENDER PEMAIN INTI (BERDASARKAN POSISI) */}
                             {['CB', 'FB', 'MF', 'WF', 'FW', 'OTHER'].map(pos => {
                                 const groupPlayers = groupedPlayers[pos];
                                 if (!groupPlayers || groupPlayers.length === 0) return null;
-
                                 return (
                                     <React.Fragment key={`group-${pos}`}>
                                         {groupPlayers.map(player => {
                                             const visibleIdx = visiblePlayers.findIndex(vp => vp.originalIndex === player.originalIndex);
                                             return <MatchPlayerRow key={player.player_id} player={player} visibleIdx={visibleIdx} isBenched={false} actions={actions} />
                                         })}
-                                        {/* Baris Rata-rata per Posisi */}
                                         <MatchAverageRow title={`AVG ${pos}`} groupPlayers={groupPlayers} isTeamAverage={false} actions={actions} />
                                     </React.Fragment>
                                 );
                             })}
-
-                            {/* 2. RENDER PEMAIN TIDAK MAIN (BENCH) */}
-                            {benchedPlayers.length > 0 && (
-                                <>
-                                    <tr>
-                                        <td colSpan="6" style={STICKY_COLS.superHeader} className="p-3 sticky z-20 bg-zinc-100 dark:bg-zinc-900 bg-clip-padding border-y border-zinc-200 dark:border-zinc-800"></td>
-                                        <td colSpan="28" className="p-3 bg-zinc-100 dark:bg-zinc-900 text-[10px] font-black text-zinc-500 uppercase tracking-widest border-y border-zinc-200 dark:border-zinc-800">
-                                            Pemain Tidak Main / Bench
-                                        </td>
-                                    </tr>
-                                    {benchedPlayers.map(player => {
-                                        const visibleIdx = visiblePlayers.findIndex(vp => vp.originalIndex === player.originalIndex);
-                                        return <MatchPlayerRow key={player.player_id} player={player} visibleIdx={visibleIdx} isBenched={true} actions={actions} />
-                                    })}
-                                </>
-                            )}
                         </tbody>
-
-                        {/* 3. RATA-RATA KESELURUHAN TIM */}
-                        <tfoot className="bg-zinc-50 dark:bg-zinc-900/80 border-t-2 border-zinc-200 dark:border-zinc-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                        <tfoot className="bg-zinc-50 border-t-2 border-zinc-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                             <MatchAverageRow title="Team Average" groupPlayers={playingPlayers} isTeamAverage={true} actions={actions} />
                         </tfoot>
-
                     </table>
                 </div>
             </div>
         </div>
-    );
-}
-
-// ==============================================================================
-// 3. SUB-COMPONENTS (PARTIALS) - Dipecah agar kode rapi
-// ==============================================================================
-
-// --- PARTIAL: HEADER TABEL ---
-const MatchTableHeader = ({ data, actions }) => {
-    
-    // Internal Helper Component khusus Header
-    const HeaderCell = ({ colId, label, isAuto = false, hasPercent = false, rowSpan = 1, isDist = false }) => {
-        const isHR4 = colId === 'hr_band_4_dist';
-        const isHR5 = colId === 'hr_band_5_dist';
-        const isPL = colId === 'player_load';
-        const bgClass = isDist ? 'bg-zinc-100/50 dark:bg-zinc-800/30' : 'bg-transparent';
-        const textColor = isAuto ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-700 dark:text-zinc-300';
-
-        return (
-            <React.Fragment>
-                <th rowSpan={rowSpan} className={`p-2.5 font-bold text-center border-l border-zinc-200 dark:border-zinc-800 min-w-[90px] align-middle ${bgClass} ${textColor}`}>
-                    <div className="flex items-center justify-center gap-1.5 group/header cursor-default">
-                        {isAuto && <Lock size={10} strokeWidth={3} className="shrink-0" />}
-                        
-                        {(isHR4 || isHR5 || isPL) && (
-                            <button type="button" onClick={() => actions.toggleSelectAll(isHR4 ? 'selected_hr4' : isHR5 ? 'selected_hr5' : 'selected_pl')} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors shrink-0" title="Pilih semua untuk perhitungan Average">
-                                {data.players_data.every(p => p[isHR4 ? 'selected_hr4' : isHR5 ? 'selected_hr5' : 'selected_pl']) ? <CheckSquare size={12} strokeWidth={2.5}/> : <Square size={12} strokeWidth={2.5}/>}
-                            </button>
-                        )}
-                        
-                        <span className="truncate">{label}</span>
-                        
-                        {!isAuto && (
-                            <button type="button" onClick={() => actions.clearColumn(colId, label)} className="text-zinc-300 dark:text-zinc-600 hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0 opacity-0 group-hover/header:opacity-100" title={`Kosongkan kolom ${label}`}>
-                                <Eraser size={12} strokeWidth={2.5} />
-                            </button>
-                        )}
-                    </div>
-                </th>
-                {hasPercent && (
-                    <th rowSpan={rowSpan} className={`p-2.5 font-bold text-zinc-400 dark:text-zinc-500 min-w-[110px] border-l border-zinc-200/50 dark:border-zinc-800/50 text-right whitespace-nowrap align-middle ${isDist ? 'bg-zinc-100/80 dark:bg-zinc-800/40' : 'bg-zinc-50/50 dark:bg-zinc-900/20'}`}>
-                        % {label}
-                    </th>
-                )}
-            </React.Fragment>
-        );
-    };
-
-    return (
-        <thead className="bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-sm">
-            <tr>
-                <th colSpan="6" rowSpan="2" style={STICKY_COLS.superHeader} className="p-2 border-b border-zinc-200 dark:border-zinc-800 sticky z-40 bg-zinc-50 dark:bg-zinc-950 bg-clip-padding align-bottom">
-                    <div className="flex font-black text-zinc-400 dark:text-zinc-600 mb-1 ml-1 text-[10px] tracking-widest uppercase">Pemain</div>
-                </th>
-                
-                <th colSpan="2" className="p-2 border-b border-r border-zinc-200 dark:border-zinc-800 text-center font-black tracking-[0.2em] uppercase text-zinc-800 dark:text-zinc-200 bg-zinc-100/80 dark:bg-zinc-800/50">Duration</th>
-                <HeaderCell colId="total_distance" label="Total Distance" hasPercent={true} rowSpan={2} />
-                <HeaderCell colId="dist_per_min" label="Distance/min" hasPercent={true} rowSpan={2} />
-                <th colSpan="2" className="p-2 border-b border-l border-r border-zinc-200 dark:border-zinc-800 text-center font-black tracking-[0.2em] uppercase text-zinc-800 dark:text-zinc-200 bg-zinc-100/80 dark:bg-zinc-800/50">Distance (m)</th>
-                
-                <HeaderCell colId="hir_18_24_kmh" label="HIR 18-24.51" hasPercent={true} rowSpan={2} isDist={true} />
-                <HeaderCell colId="sprint_distance" label="SPRINT 24.52~" hasPercent={true} rowSpan={2} isDist={true} />
-                <HeaderCell colId="total_18kmh" label="Total 18 Km/h~" isAuto={true} hasPercent={true} rowSpan={2} isDist={true} />
-                <HeaderCell colId="accels" label="Accels >3m/s/s" rowSpan={2} />
-                <HeaderCell colId="decels" label="Decels >3m/s/s" rowSpan={2} />
-                <HeaderCell colId="hr_band_4_dist" label="HR Band 4 Dist" rowSpan={2} />
-                <HeaderCell colId="hr_band_4_dur" label="HR Band 4 Dur" rowSpan={2} />
-                <HeaderCell colId="hr_band_5_dist" label="HR Band 5 Dist" rowSpan={2} />
-                <HeaderCell colId="hr_band_5_dur" label="HR Band 5 Dur" rowSpan={2} />
-                <HeaderCell colId="max_velocity" label="Max Vel" hasPercent={true} rowSpan={2} />
-                <HeaderCell colId="highest_velocity" label="Highest Vel" isAuto={true} rowSpan={2} />
-                <HeaderCell colId="player_load" label="Player Load" hasPercent={true} rowSpan={2} />
-            </tr>
-            <tr className="border-b-2 border-zinc-200 dark:border-zinc-800">
-                <HeaderCell colId="duration_1st" label="1 ST" />
-                <HeaderCell colId="duration_2nd" label="2 ND" />
-                <HeaderCell colId="distance_1st" label="Dist 1 ST" isDist={true} />
-                <HeaderCell colId="distance_2nd" label="Dist 2 ND" isDist={true} />
-            </tr>
-            <tr className="border-b-2 border-zinc-200 dark:border-zinc-800">
-                <th style={STICKY_COLS.c1} className="p-2 sticky z-30 bg-zinc-50 dark:bg-zinc-950 text-center bg-clip-padding" title="Pilih semua">
-                    <button type="button" onClick={() => actions.toggleSelectAll('selected')} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors outline-none">
-                        {data.players_data.every(p => p.selected) ? <CheckSquare size={14} strokeWidth={2.5} /> : <Square size={14} strokeWidth={2.5} />}
-                    </button>
-                </th>
-                <th style={STICKY_COLS.c2} className="p-2 sticky z-30 bg-zinc-50 dark:bg-zinc-950 bg-clip-padding text-center" title="Geser & Status Main"><Activity size={14} className="text-zinc-400 mx-auto" /></th> 
-                <th style={STICKY_COLS.c3} className="p-2 font-black text-zinc-500 uppercase tracking-wider sticky z-30 bg-zinc-50 dark:bg-zinc-950 bg-clip-padding">NO</th>
-                <th style={STICKY_COLS.c4} className="p-2 font-black text-zinc-500 uppercase tracking-wider sticky z-30 bg-zinc-50 dark:bg-zinc-950 bg-clip-padding">POS</th>
-                <th style={STICKY_COLS.c5} className="p-2 font-black text-zinc-500 uppercase tracking-wider sticky z-30 bg-zinc-50 dark:bg-zinc-950 bg-clip-padding">NP</th>
-                <th style={STICKY_COLS.c6} className="p-2 font-black text-zinc-500 uppercase tracking-wider sticky z-30 bg-zinc-50 dark:bg-zinc-950 shadow-[4px_0_12px_rgba(0,0,0,0.03)] bg-clip-padding border-r border-zinc-200 dark:border-zinc-800">NAMA PEMAIN</th>
-                <th colSpan="28" className="p-2 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50"></th>
-            </tr>
-        </thead>
-    );
-}
-
-// --- PARTIAL: BARIS PEMAIN ---
-const MatchPlayerRow = ({ player, visibleIdx, isBenched, actions }) => {
-    const rowStyle = `bg-white dark:bg-zinc-950 transition-colors duration-200 ${isBenched ? 'opacity-60 hover:opacity-100 hover:bg-zinc-50 dark:hover:bg-zinc-900/60' : 'hover:bg-red-50 dark:hover:bg-zinc-900 group-hover:bg-zinc-200 dark:group-hover:bg-black'}`;
-
-    return (
-        <tr 
-            draggable={true} 
-            onDragStart={(e) => actions.handleDragStart(e, player.originalIndex)} 
-            onDragEnter={(e) => actions.handleDragEnter(e, player.originalIndex)} 
-            onDragEnd={actions.handleDragEnd} 
-            onDragOver={(e) => e.preventDefault()} 
-            className="group"
-        >
-            <td style={STICKY_COLS.c1} className={`p-2 sticky z-20 text-center bg-clip-padding ${rowStyle}`}>
-                <button type="button" onClick={() => actions.togglePlayerSelection(player.originalIndex, 'selected')} className={`${player.selected ? 'text-zinc-900 dark:text-white' : 'text-zinc-300 dark:text-zinc-700'} hover:scale-110 transition-transform outline-none`}>
-                    {player.selected ? <CheckSquare size={14} strokeWidth={2.5} /> : <Square size={14} strokeWidth={2.5} />}
-                </button>
-            </td>
-            <td style={STICKY_COLS.c2} className={`p-1 sticky z-20 bg-clip-padding ${rowStyle}`}>
-                <div className="flex items-center justify-center gap-1.5 w-full">
-                    <div className="cursor-grab active:cursor-grabbing hover:text-zinc-600 transition-colors" title="Geser (Hanya Posisi Sama)">
-                        <GripVertical size={14} className="text-zinc-300 dark:text-zinc-700" />
-                    </div>
-                    <button type="button" onClick={() => actions.togglePlayStatus(player.originalIndex)} className="outline-none hover:scale-110 transition-transform" title={isBenched ? "Set Main" : "Set Tidak Main"}>
-                        {isBenched ? <MinusCircle size={14} className="text-red-500" /> : <CheckCircle2 size={14} className="text-emerald-500" />}
-                    </button>
-                </div>
-            </td>
-            <td style={STICKY_COLS.c3} className={`p-2 font-bold text-zinc-400 dark:text-zinc-600 sticky z-20 bg-clip-padding ${rowStyle}`}>{player.originalIndex + 1}</td>
-            <td style={STICKY_COLS.c4} className={`p-2 sticky z-20 bg-clip-padding ${rowStyle}`}>
-                <span className={`px-1.5 py-0.5 rounded-md border text-[9px] font-black tracking-wider ${isBenched ? 'border-zinc-200 text-zinc-400 bg-zinc-100' : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 bg-zinc-100/50 dark:bg-zinc-900'}`}>{player.position}</span>
-            </td>
-            <td style={STICKY_COLS.c5} className={`p-2 font-mono font-bold text-[11px] text-zinc-500 sticky z-20 bg-clip-padding ${rowStyle}`}>{String(player.position_number).padStart(2, '0')}</td>
-            <td style={STICKY_COLS.c6} className={`p-2 font-bold ${isBenched ? 'text-zinc-500' : 'text-zinc-900 dark:text-zinc-100'} sticky z-20 shadow-[4px_0_12px_rgba(0,0,0,0.03)] dark:shadow-[4px_0_12px_rgba(0,0,0,0.3)] bg-clip-padding ${rowStyle} border-r border-zinc-200 dark:border-zinc-800`}>
-                <div style={{ width: '164px' }} className="flex items-center justify-between gap-2 group/name overflow-hidden">
-                    <span className="truncate flex-1" title={player.name}>{player.name}</span>
-                    {!isBenched && (
-                        <button type="button" onClick={() => actions.clearRow(player.originalIndex, player.name)} className="text-zinc-300 dark:text-zinc-700 hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0 opacity-0 group-hover/name:opacity-100">
-                            <Eraser size={12} strokeWidth={2.5}/>
-                        </button>
-                    )}
-                </div>
-            </td>
-
-            {MATCH_EXCEL_COLUMNS.map(col => {
-                const rawValue = actions.getAutoCalculatedValue(player, col.id);
-                const percent = actions.calculatePercentage(col.id, rawValue, player.position, player.historical_highest);
-                const isAuto = ['total_18kmh', 'highest_velocity'].includes(col.id);
-                const isDist = checkIsDistanceGroup(col.id);
-                const isNewRecord = col.id === 'highest_velocity' && parseFloat(rawValue) > (parseFloat(player.historical_highest?.highest_velocity) || 0);
-
-                const isHR4 = col.id === 'hr_band_4_dist';
-                const isHR5 = col.id === 'hr_band_5_dist';
-                const isPL = col.id === 'player_load';
-                let cellBgClass = isDist ? (isAuto ? 'bg-zinc-100/40 dark:bg-zinc-900/30' : 'bg-zinc-50/50 dark:bg-zinc-900/10') : (isAuto ? 'bg-zinc-50/50 dark:bg-zinc-900/20' : '');
-
-                return (
-                    <React.Fragment key={col.id}>
-                        <td className={`p-1.5 border-l border-zinc-100 dark:border-zinc-800/50 relative transition-colors ${cellBgClass}`}>
-                            <div className="flex items-center justify-center gap-1 w-full">
-                                {(isHR4 || isHR5 || isPL) && (
-                                    <button type="button" onClick={() => actions.togglePlayerSelection(player.originalIndex, isHR4 ? 'selected_hr4' : isHR5 ? 'selected_hr5' : 'selected_pl')} className={`${player[isHR4 ? 'selected_hr4' : isHR5 ? 'selected_hr5' : 'selected_pl'] ? 'text-zinc-900 dark:text-zinc-300' : 'text-zinc-200 dark:text-zinc-800 hover:text-zinc-400'} outline-none shrink-0 transition-colors`}>
-                                        {player[isHR4 ? 'selected_hr4' : isHR5 ? 'selected_hr5' : 'selected_pl'] ? <CheckSquare size={12} strokeWidth={2.5}/> : <Square size={12} strokeWidth={2.5}/>}
-                                    </button>
-                                )}
-                                
-                                <input 
-                                    type="text" value={rawValue}
-                                    onChange={e => actions.handleChange(player.originalIndex, col.id, e.target.value)}
-                                    onPaste={e => actions.handleLocalPaste(e, visibleIdx, col.id)}
-                                    readOnly={isAuto} placeholder="-"
-                                    className={`w-full bg-transparent border-none rounded text-[11px] py-1 px-1.5 text-center font-bold tabular-nums transition-all outline-none 
-                                        ${isAuto ? 'text-zinc-400 dark:text-zinc-600 cursor-not-allowed' : 'text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus:bg-white dark:focus:bg-zinc-950 focus:ring-2 focus:ring-zinc-900'}
-                                    `} 
-                                />
-                            </div>
-                            {isNewRecord && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-zinc-900 dark:bg-zinc-100 rounded-full animate-pulse shadow-sm"></div>}
-                        </td>
-                        
-                        {col.hasPercent && (
-                            <td className={`p-2 border-l border-zinc-100 dark:border-zinc-800/50 ${isDist ? 'bg-zinc-50/80 dark:bg-zinc-900/20' : 'bg-transparent'}`}>
-                                <div className={`flex items-center justify-end gap-2`}>
-                                    <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 w-8 text-right tabular-nums">{percent}%</span>
-                                    <div className={`w-12 h-1.5 rounded-full overflow-hidden ${isDist ? 'bg-zinc-200 dark:bg-zinc-800' : 'bg-zinc-100 dark:bg-zinc-900'}`}>
-                                        <div className={`h-full transition-all duration-500 rounded-full ${isDist ? 'bg-zinc-600 dark:bg-zinc-400' : 'bg-zinc-900 dark:bg-zinc-100'}`} style={{ width: `${Math.min(percent, 100)}%` }}></div>
-                                    </div>
-                                </div>
-                            </td>
-                        )}
-                    </React.Fragment>
-                );
-            })}
-        </tr>
-    );
-}
-
-// --- PARTIAL: BARIS AVERAGE (Rata-rata) ---
-const MatchAverageRow = ({ title, groupPlayers, isTeamAverage, actions }) => {
-    const bgClass = isTeamAverage ? 'bg-zinc-50 dark:bg-zinc-950 bg-clip-padding' : 'bg-orange-50/90 dark:bg-orange-950/90 bg-clip-padding';
-    const borderClass = isTeamAverage ? 'border-zinc-200 dark:border-zinc-800' : 'border-orange-200/60 dark:border-orange-800/60';
-    const textClass = isTeamAverage ? 'text-zinc-900 dark:text-zinc-100' : 'text-orange-700 dark:text-orange-400';
-    
-    return (
-        <tr className={isTeamAverage ? '' : 'bg-orange-50/60 dark:bg-orange-900/20 border-y border-orange-200/60 dark:border-orange-800/60'}>
-            <td colSpan="5" style={STICKY_COLS.footerSpan} className={`p-2 sticky z-20 ${bgClass}`}></td>
-            <td style={STICKY_COLS.c6} className={`p-2.5 font-black text-[10px] uppercase tracking-widest text-right pr-4 sticky z-20 shadow-[4px_0_12px_rgba(0,0,0,0.03)] border-r ${bgClass} ${textClass} ${borderClass}`}>
-                {title}
-            </td>
-            {MATCH_EXCEL_COLUMNS.map(col => {
-                const avgValue = calculateLocalAverage(groupPlayers, col.id, actions.getAutoCalculatedValue);
-                const hasValue = avgValue !== '-';
-                
-                let avgPercent = 0;
-                if (hasValue && col.hasPercent) {
-                    const distanceGroup = ['total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh'];
-                    const hr4Group = ['hr_band_4_dist', 'hr_band_4_dur'];
-                    const hr5Group = ['hr_band_5_dist', 'hr_band_5_dur'];
-                    const plGroup = ['player_load'];
-
-                    let targetPlayers = groupPlayers;
-                    if (distanceGroup.includes(col.id)) targetPlayers = groupPlayers.filter(p => p.selected);
-                    else if (hr4Group.includes(col.id)) targetPlayers = groupPlayers.filter(p => p.selected_hr4);
-                    else if (hr5Group.includes(col.id)) targetPlayers = groupPlayers.filter(p => p.selected_hr5);
-                    else if (plGroup.includes(col.id)) targetPlayers = groupPlayers.filter(p => p.selected_pl);
-
-                    let sumPct = 0; let countPct = 0;
-                    targetPlayers.forEach(p => {
-                        const rawVal = actions.getAutoCalculatedValue(p, col.id);
-                        if (rawVal !== '' && !isNaN(parseFloat(rawVal))) {
-                            const pct = parseFloat(actions.calculatePercentage(col.id, rawVal, p.position, p.historical_highest));
-                            if (!isNaN(pct)) { sumPct += pct; countPct++; }
-                        }
-                    });
-                    avgPercent = countPct > 0 ? (sumPct / countPct).toFixed(1) : 0;
-                }
-                const isDist = checkIsDistanceGroup(col.id);
-
-                const cellTextClass = isTeamAverage ? 'text-zinc-900 dark:text-zinc-100' : 'text-orange-900 dark:text-orange-300';
-                const cellBorderClass = isTeamAverage ? 'border-zinc-200 dark:border-zinc-800' : 'border-orange-200/50 dark:border-orange-800/50';
-                const cellBgClass = isDist ? (isTeamAverage ? 'bg-zinc-100/50 dark:bg-zinc-800/30' : 'bg-orange-100/50 dark:bg-orange-900/40') : '';
-
-                return (
-                    <React.Fragment key={`avg-${col.id}`}>
-                        <td className={`p-2 font-bold text-center border-l text-[11px] tabular-nums ${cellTextClass} ${cellBorderClass} ${cellBgClass}`}>
-                            {avgValue}
-                        </td>
-                        {col.hasPercent && (
-                            <td className={`p-2 border-l ${cellBorderClass} ${isDist ? (isTeamAverage ? 'bg-zinc-100/80 dark:bg-zinc-800/40' : 'bg-orange-100/80 dark:bg-orange-900/50') : ''}`}>
-                                {hasValue && (
-                                    <div className="flex items-center justify-end gap-2">
-                                        <span className={`text-[10px] font-black w-8 text-right tabular-nums ${cellTextClass}`}>{avgPercent}%</span>
-                                        <div className={`w-12 h-1.5 rounded-full overflow-hidden ${isTeamAverage ? (isDist ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-zinc-200 dark:bg-zinc-800') : 'bg-orange-200 dark:bg-orange-900/80'}`}>
-                                            <div className={`h-full transition-all duration-500 rounded-full ${isTeamAverage ? (isDist ? 'bg-zinc-700 dark:bg-zinc-300' : 'bg-zinc-900 dark:bg-zinc-100') : 'bg-orange-500 dark:bg-orange-400'}`} style={{ width: `${Math.min(avgPercent, 100)}%` }}></div>
-                                        </div>
-                                    </div>
-                                )}
-                            </td>
-                        )}
-                    </React.Fragment>
-                );
-            })}
-        </tr>
     );
 }
