@@ -194,27 +194,41 @@ export default function PerformanceLogShow({ auth, log, club, players, existing_
     const submit = (e) => {
         e.preventDefault();
         
+        // PENTING: Filter hanya pemain yang aktif di tabel (bukan di bench)
+        const activePlayersOnly = data.players_data.filter(p => p.is_playing !== false);
+
         if(!data.player_benchmark_id) {
-            alert("Pilih Player Benchmark terlebih dahulu sebelum menyimpan!");
+            alert("Harap pilih Player Benchmark (Acuan Target Personal) terlebih dahulu!");
             return;
         }
 
-        const finalizedData = data.players_data.map((player, index) => {
+        // Siapkan data akhir yang hanya berisi pemain aktif
+        const finalizedData = activePlayersOnly.map((player, index) => {
             const finalMetrics = { ...player.metrics };
-            finalMetrics['hir_19_8_kmh'] = getAutoCalculatedValue(player, 'hir_19_8_kmh');
+            
+            // Masukkan nilai kalkulasi otomatis ke JSON sebelum kirim
             finalMetrics['total_18kmh'] = getAutoCalculatedValue(player, 'total_18kmh');
             finalMetrics['highest_velocity'] = getAutoCalculatedValue(player, 'highest_velocity');
-            return { player_id: player.player_id, metrics: finalMetrics, sort_order: index };
+            
+            return { 
+                player_id: player.player_id, 
+                metrics: finalMetrics, 
+                sort_order: index 
+            };
         });
 
-        // KUNCI PERBAIKAN: Gunakan router.post, BUKAN post bawaan useForm
+        // Kirim data ke backend menggunakan router.post agar payload flat (tidak nested)
         router.post(route('performance-logs.metrics.updateBulk', log.id), {
             title: data.title,
             benchmark_id: data.benchmark_id,
-            player_benchmark_id: data.player_benchmark_id, // Pastikan ini terkirim!
+            player_benchmark_id: data.player_benchmark_id,
             players_data: finalizedData,
         }, {
             preserveScroll: true,
+            onSuccess: () => {
+                // Opsional: berikan feedback visual
+                console.log("Sinkronisasi Berhasil");
+            }
         });
     };
 

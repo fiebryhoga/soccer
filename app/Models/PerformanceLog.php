@@ -7,7 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class PerformanceLog extends Model
 {
     protected $fillable = [
-        'club_id', 'date', 'type', 'title', 'description', 'selected_metrics', 'tag', 'benchmark_id, player_benchmark_id'
+        'club_id', 
+        'date', 
+        'type', 
+        'title', 
+        'description', 
+        'selected_metrics', 
+        'tag', 
+        'benchmark_id',           
+        'player_benchmark_id'     
     ];
 
     // Otomatis ubah JSON ke Array PHP

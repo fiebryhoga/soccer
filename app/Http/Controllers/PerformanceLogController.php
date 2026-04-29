@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\PerformanceLogExport;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Constants\MetricsConstant;
 use App\Models\PerformanceLog;
 use App\Models\Benchmark;
 use App\Models\Club;
@@ -18,9 +17,6 @@ use Carbon\CarbonPeriod;
 
 class PerformanceLogController extends Controller
 {
-    /**
-     * 1. Menampilkan Kalender 14 Hari
-     */
     public function index(Request $request)
     {
         $club = Club::first();
@@ -60,9 +56,6 @@ class PerformanceLogController extends Controller
         ]);
     }
 
-    /**
-     * 2. Menyimpan Setup Tanggal Mulai Musim
-     */
     public function updateStartDate(Request $request)
     {
         $request->validate([
@@ -79,9 +72,6 @@ class PerformanceLogController extends Controller
         return redirect()->route('performance-logs.index')->with('message', 'Kalender berhasil dibuat!');
     }
 
-    /**
-     * 3. Menyimpan Tipe Agenda (Dropdown di Kalender)
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -143,9 +133,6 @@ class PerformanceLogController extends Controller
         return redirect()->back();
     }
 
-    /**
-     * 4. Menampilkan Halaman Tabel 
-     */
     public function show($id)
     {
         $log = PerformanceLog::with('benchmark')->findOrFail($id);
@@ -160,68 +147,30 @@ class PerformanceLogController extends Controller
             'club' => $club, 
             'players' => Player::orderBy('position_number', 'asc')->get(),
             'existing_metrics' => PlayerMetric::where('performance_log_id', $log->id)->get()->keyBy('player_id'),
-            // Memisahkan Benchmark agar siap digunakan di Frontend
             'team_benchmarks' => Benchmark::where('target_type', 'team')->get(),
             'player_benchmarks' => Benchmark::where('target_type', 'player')->get()
         ]);
     }
 
-    /**
-     * 5. Menyimpan Data Metrik GPS 
-     */
+    // =================================================================
+    // FUNGSI STORE & UPDATE METRICS YANG SUDAH DIPERBAIKI SINKRONISASINYA
+    // =================================================================
     public function storeMetrics(Request $request, PerformanceLog $log)
     {
-        // REVISI VALIDASI: Menggunakan struktur flat agar sinkron dengan Frontend
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'benchmark_id' => 'required|exists:benchmarks,id',
-            'player_benchmark_id' => 'nullable|exists:benchmarks,id',
-            'players_data' => 'required|array',
-        ]);
+        $this->processMetrics($request, $log, 'create');
+        return redirect()->back()->with('message', 'Data GPS berhasil disimpan dan disinkronkan!');
+    }
 
-        $log->update([
-            'title' => $request->title,
-            'benchmark_id' => $request->benchmark_id,
-            'player_benchmark_id' => $request->player_benchmark_id, // Menyimpan ID Benchmark Pemain
-        ]);
-
-        $updatedPlayerIds = [];
-
-        foreach ($request->players_data as $index => $playerData) {
-            PlayerMetric::updateOrCreate(
-                [
-                    'performance_log_id' => $log->id,
-                    'player_id' => $playerData['player_id']
-                ],
-                [
-                    'metrics' => $playerData['metrics'],
-                    'sort_order' => $playerData['sort_order'] ?? $index
-                ]
-            );
-            $updatedPlayerIds[] = $playerData['player_id'];
-        }
-
-        // Lakukan Rekalkulasi Highest Penuh
-        $recordBreakers = $this->recalculateHighestMetrics($updatedPlayerIds);
-
-        // --- PENCATATAN AKTIVITAS ---
-        $dateFormatted = Carbon::parse($log->date)->translatedFormat('d M Y');
-        $activityDetails = "Sesi: {$log->title} ({$dateFormatted})";
-        Activity::log('menyimpan data metrik GPS', $activityDetails, 'create');
-
-        if (count($recordBreakers) > 0) {
-            $names = implode(', ', array_slice($recordBreakers, 0, 3));
-            $more = count($recordBreakers) > 3 ? " dan " . (count($recordBreakers) - 3) . " lainnya" : "";
-            Activity::log('mencatat pembaruan rekor GPS', "Pemain: {$names}{$more} pada sesi {$log->title}", 'update');
-        }
-
-        return redirect()->back()->with('message', 'Data GPS berhasil disimpan dan diperbarui!');
+    public function updateMetrics(Request $request, PerformanceLog $log)
+    {
+        $this->processMetrics($request, $log, 'update');
+        return redirect()->back()->with('message', 'Data berhasil diperbarui dan disinkronkan!');
     }
 
     /**
-     * Memperbarui Data Metrik GPS (Bisa Digabungkan dengan Atas)
+     * Helper untuk memproses update/store agar kode tidak berulang (DRY)
      */
-    public function updateMetrics(Request $request, PerformanceLog $log)
+    private function processMetrics(Request $request, PerformanceLog $log, $action)
     {
         $request->validate([
             'title' => 'required|string|max:255',
@@ -230,14 +179,22 @@ class PerformanceLogController extends Controller
             'players_data' => 'required|array',
         ]);
 
+        // 1. UPDATE BENCHMARK YANG DIPILIH
         $log->update([
             'title' => $request->title,
             'benchmark_id' => $request->benchmark_id,
-            'player_benchmark_id' => $request->player_benchmark_id,
+            'player_benchmark_id' => $request->player_benchmark_id, // Sekarang pasti tersimpan!
         ]);
 
-        $updatedPlayerIds = [];
+        // 2. SINKRONISASI PEMAIN BENCH VS AKTIF
+        $activePlayerIds = collect($request->players_data)->pluck('player_id')->toArray();
 
+        // KUNCI PERBAIKAN: Hapus pemain yang ada di database tapi tidak ada di kiriman (Berarti di-bench)
+        PlayerMetric::where('performance_log_id', $log->id)
+            ->whereNotIn('player_id', $activePlayerIds)
+            ->delete();
+
+        // 3. SIMPAN/UPDATE PEMAIN AKTIF
         foreach ($request->players_data as $index => $playerData) {
             PlayerMetric::updateOrCreate(
                 [
@@ -249,24 +206,21 @@ class PerformanceLogController extends Controller
                     'sort_order' => $playerData['sort_order'] ?? $index
                 ]
             );
-            $updatedPlayerIds[] = $playerData['player_id'];
         }
 
-        // Lakukan Rekalkulasi Highest Penuh
-        $recordBreakers = $this->recalculateHighestMetrics($updatedPlayerIds);
+        // 4. REKALKULASI HIGHEST RECORD (Hanya pemain aktif)
+        $recordBreakers = $this->recalculateHighestMetrics($activePlayerIds);
 
-        // --- PENCATATAN AKTIVITAS ---
+        // 5. CATAT AKTIVITAS
         $dateFormatted = Carbon::parse($log->date)->translatedFormat('d M Y');
         $activityDetails = "Sesi: {$log->title} ({$dateFormatted})";
-        Activity::log('memperbarui data metrik GPS', $activityDetails, 'update');
+        Activity::log("menyimpan data metrik GPS", $activityDetails, $action);
 
         if (count($recordBreakers) > 0) {
             $names = implode(', ', array_slice($recordBreakers, 0, 3));
             $more = count($recordBreakers) > 3 ? " dan " . (count($recordBreakers) - 3) . " lainnya" : "";
             Activity::log('mencatat pembaruan rekor GPS', "Pemain: {$names}{$more} pada sesi {$log->title}", 'update');
         }
-
-        return redirect()->back()->with('message', 'Data berhasil diperbarui!');
     }
 
 
