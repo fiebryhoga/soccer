@@ -138,15 +138,46 @@ export default function MatchMetricsTable({ data, setData, getAutoCalculatedValu
             
             {/* AREA SMART BENCH (Monochrome Premium) */}
             <div className="bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                     <div>
                         <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-tight flex items-center gap-2">
                             <Users size={16} className="text-zinc-500 dark:text-zinc-400"/> Skuad Pertandingan (Bench)
                         </h3>
                         <p className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 mt-0.5">Pilih pemain yang tampil (Starter/Sub) untuk ditambahkan ke tabel matriks di bawah.</p>
                     </div>
-                    <div className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-900 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 uppercase tracking-widest shadow-sm">
-                        {benchedPlayers.length} di Bench
+                    
+                    {/* BAGIAN KANAN: Tombol Masukkan Semua & Indikator Bench */}
+                    <div className="flex items-center gap-2 shrink-0">
+                        {benchedPlayers.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    // Ubah data utama pemain sekaligus (is_playing dan status centang checkbox)
+                                    const newData = data.players_data.map(p => {
+                                        p.is_playing = true;
+                                        p.selected = true;
+                                        p.selected_hr4 = true;
+                                        p.selected_hr5 = true;
+                                        p.selected_pl = true;
+                                        if(p.metrics) {
+                                            p.metrics.selected = true;
+                                            p.metrics.selected_hr4 = true;
+                                            p.metrics.selected_hr5 = true;
+                                            p.metrics.selected_pl = true;
+                                        }
+                                        return p;
+                                    });
+                                    setData('players_data', newData);
+                                }}
+                                className="px-2.5 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 rounded border border-transparent text-[9px] font-black transition-all shadow-sm outline-none uppercase tracking-widest flex items-center gap-1.5"
+                            >
+                                <Plus size={12} strokeWidth={3} />
+                                Masukkan Semua
+                            </button>
+                        )}
+                        <div className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-900 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 uppercase tracking-widest shadow-sm">
+                            {benchedPlayers.length} di Bench
+                        </div>
                     </div>
                 </div>
 

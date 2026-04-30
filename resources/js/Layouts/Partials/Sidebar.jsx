@@ -20,7 +20,8 @@ import {
     ChevronDown,
     GitCompare, 
     ActivitySquare, 
-    Percent
+    Percent, BarChart3, TrendingUp, Radar,
+    Calculator, Dumbbell, Timer,
 } from 'lucide-react';
 import IconButton from '@/Components/ui/IconButton';
 
@@ -76,15 +77,77 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                 { name: 'Dashboard', icon: LayoutDashboard, href: route('dashboard'), activeRule: 'dashboard' },
                 { name: 'Training Calendar', icon: Calendar, href: route('performance-logs.index'), activeRule: 'performance-logs.*' },
                 
+                // --- MENU BARU: TEAM ANALYSIS ---
                 { 
-                    name: 'Analysis Data Session', 
-                    icon: LineChart, 
+                    name: 'Team Analysis', 
+                    icon: Users, // Menggunakan icon Users (Jamak)
                     href: '#', 
-                    activeRule: 'analysis.*', 
+                    activeRule: 'analysis.team.*', // Kita ubah rutenya agar spesifik untuk Team
                     subItems: [
                         { name: 'Comparasion Metric', icon: GitCompare, href: route('analysis.comparison'), activeRule: 'analysis.comparison' },
                         { name: 'Strain & Monotony', icon: ActivitySquare, href: route('analysis.strain'), activeRule: 'analysis.strain' },
                         { name: 'ACWR', icon: Percent, href: route('analysis.acwr'), activeRule: 'analysis.acwr' }
+                    ]
+                },
+
+                // --- MENU BARU: PLAYER ANALYSIS ---
+                { 
+                    name: 'Player Analysis', 
+                    icon: User, 
+                    href: '#', 
+                    activeRule: 'analysis.player.*', 
+                    subItems: [
+                        { 
+                            name: 'Strain & Monotony', 
+                            icon: ActivitySquare, 
+                            href: route('analysis.player.strain'), // <--- Sudah terhubung ke route baru
+                            activeRule: 'analysis.player.strain' 
+                        },
+                        { 
+                            name: 'ACWR', 
+                            icon: Percent, 
+                            href: route('analysis.player.acwr'),
+                            activeRule: 'analysis.player.acwr' 
+                        },
+                        { 
+                            name: 'Individual Progress', 
+                            icon: TrendingUp, 
+                            href: '#', 
+                            activeRule: 'analysis.player.progress' 
+                        },
+                        { 
+                            name: 'Radar Comparison', 
+                            icon: Radar, 
+                            href: '#', 
+                            activeRule: 'analysis.player.radar' 
+                        }
+                    ]
+                },
+                { 
+                    name: 'Physical Profiling', 
+                    icon: ActivitySquare, 
+                    href: route('physical.index'), 
+                    activeRule: 'physical.index|players.physical.show' 
+                },
+                { 
+                    name: 'Formula Calculation', 
+                    icon: Calculator, 
+                    href: '#', 
+                    activeRule: 'formula.*', 
+                    subItems: [
+                        { 
+                            name: 'Strength & Ratio', 
+                            icon: Dumbbell, 
+                            href: route('formula.strength'), 
+                            activeRule: 'formula.strength' 
+                        },
+                        { 
+                            // Nama menu diubah agar lebih representatif
+                            name: 'Endurance & Volume', 
+                            icon: Timer, 
+                            href: route('formula.endurance'), 
+                            activeRule: 'formula.endurance' 
+                        }
                     ]
                 },
             ]
@@ -104,10 +167,17 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                         { name: 'Player Benchmark', icon: User, href: route('players.benchmarks.index'), activeRule: 'players.benchmarks.*' }
                     ]
                 },
+
+                { 
+                    name: 'Master Assessment', 
+                    icon: Settings, 
+                    href: route('master.assessment.index'), 
+                    activeRule: 'master.assessment.*' 
+                },
                 
                 { name: 'Admins', icon: ShieldCheck, href: route('admins.index'), activeRule: 'admins.*' },
             ]
-        }
+        },
     ];
 
     return (

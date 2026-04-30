@@ -10,6 +10,9 @@ use App\Http\Controllers\PlayerBenchmarkController;
 use App\Http\Controllers\TrainingMetricController;
 use App\Http\Controllers\PerformanceLogController;
 use App\Http\Controllers\PerformanceAnalysisController;
+use App\Http\Controllers\PlayerAnalysisController;
+use App\Http\Controllers\FormulaController;
+use App\Http\Controllers\PlayerAssessmentController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -117,6 +120,29 @@ Route::middleware('auth')->group(function () {
         Route::put('/{benchmark}', [PlayerBenchmarkController::class, 'update'])->name('players.benchmarks.update');
         Route::post('/{benchmark}/duplicate', [PlayerBenchmarkController::class, 'duplicate'])->name('players.benchmarks.duplicate');
         Route::delete('/{benchmark}', [PlayerBenchmarkController::class, 'destroy'])->name('players.benchmarks.destroy');
+    });
+
+    Route::get('/analysis/player/strain', [PlayerAnalysisController::class, 'playerStrain'])->name('analysis.player.strain');
+    Route::get('/analysis/player/acwr', [App\Http\Controllers\PlayerAnalysisController::class, 'playerAcwr'])->name('analysis.player.acwr');
+
+    Route::prefix('formula')->name('formula.')->group(function () {
+        Route::get('/strength', [App\Http\Controllers\FormulaController::class, 'strength'])->name('strength');
+        Route::get('/endurance', [App\Http\Controllers\FormulaController::class, 'endurance'])->name('endurance');
+        Route::post('/save-test', [App\Http\Controllers\FormulaController::class, 'saveTest'])->name('saveTest');
+    });
+
+    // ROUTE PHYSICAL PROFILING
+    Route::get('/physical-profiling', [App\Http\Controllers\PlayerAssessmentController::class, 'index'])->name('physical.index');
+    Route::get('/players/{player}/physical-profile', [App\Http\Controllers\PlayerAssessmentController::class, 'show'])->name('players.physical.show');
+    Route::post('/players/{player}/physical-profile', [App\Http\Controllers\PlayerAssessmentController::class, 'store'])->name('players.physical.store');
+
+    Route::prefix('master-assessment')->name('master.assessment.')->group(function () {
+        Route::get('/', [App\Http\Controllers\MasterAssessmentController::class, 'index'])->name('index');
+        Route::post('/category', [App\Http\Controllers\MasterAssessmentController::class, 'storeCategory'])->name('storeCategory');
+        Route::delete('/category/{id}', [App\Http\Controllers\MasterAssessmentController::class, 'destroyCategory'])->name('destroyCategory');
+        
+        Route::post('/metric', [App\Http\Controllers\MasterAssessmentController::class, 'storeMetric'])->name('storeMetric');
+        Route::delete('/metric/{id}', [App\Http\Controllers\MasterAssessmentController::class, 'destroyMetric'])->name('destroyMetric');
     });
 
 });

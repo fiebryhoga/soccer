@@ -45,13 +45,14 @@ class ClubAndPlayerSeeder extends Seeder
             ['position' => 'MF', 'position_number' => 68, 'name' => 'Toni Firmansyah', 'highest_velocity' => 35],
             
             // Wing Forward (WF)
-            ['position' => 'WF', 'position_number' => 10, 'name' => 'Bruno Moreira', 'highest_velocity' => 34],
+            ['position' => 'WF', 'position_number' => 12, 'name' => 'Alfan Suaib', 'highest_velocity' => 34],
             ['position' => 'WF', 'position_number' => 26, 'name' => 'Dimas Wicaksono', 'highest_velocity' => 34],
             ['position' => 'WF', 'position_number' => 22, 'name' => 'Gali Freitas', 'highest_velocity' => 35],
             ['position' => 'WF', 'position_number' => 77, 'name' => 'Malik Risaldi', 'highest_velocity' => 36],
             ['position' => 'WF', 'position_number' => 14, 'name' => 'Riyan Ardiyansah', 'highest_velocity' => 31],
             
             // Forward (FW)
+            ['position' => 'FW', 'position_number' => 72, 'name' => 'Aleandro Alan Malana', 'highest_velocity' => 33],
             ['position' => 'FW', 'position_number' => 9,  'name' => 'Bruno Paraiba', 'highest_velocity' => 33],
             ['position' => 'FW', 'position_number' => 11, 'name' => 'Mihailo Perovic', 'highest_velocity' => 33],
         ];
