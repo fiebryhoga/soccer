@@ -16,6 +16,11 @@ class Player extends Model
         'position',
         'profile_photo',
         'highest_metrics',
+        'age', 
+        'gender', 
+        'height', 
+        'weight', 
+        'dominant_limb'
     ];
 
     protected $casts = [
