@@ -119,7 +119,7 @@ export default function Comparison({ auth, comparisonData, allSessions }) {
                         <Search size={16} className="text-zinc-400" strokeWidth={2.5} /> 
                         Cari & Pilih Sesi Latihan
                     </h3>
-                    
+                    {/* asdasda */}
                     <div className="flex flex-col md:flex-row gap-4 items-start">
                         
                         <div className="relative w-full md:w-1/2">
