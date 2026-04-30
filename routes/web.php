@@ -136,14 +136,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/players/{player}/physical-profile', [App\Http\Controllers\PlayerAssessmentController::class, 'show'])->name('players.physical.show');
     Route::post('/players/{player}/physical-profile', [App\Http\Controllers\PlayerAssessmentController::class, 'store'])->name('players.physical.store');
 
+    // ROUTE MASTER ASSESSMENT (ADMIN)
     Route::prefix('master-assessment')->name('master.assessment.')->group(function () {
-        Route::get('/', [App\Http\Controllers\MasterAssessmentController::class, 'index'])->name('index');
-        Route::post('/category', [App\Http\Controllers\MasterAssessmentController::class, 'storeCategory'])->name('storeCategory');
-        Route::delete('/category/{id}', [App\Http\Controllers\MasterAssessmentController::class, 'destroyCategory'])->name('destroyCategory');
-        
-        Route::post('/metric', [App\Http\Controllers\MasterAssessmentController::class, 'storeMetric'])->name('storeMetric');
-        Route::delete('/metric/{id}', [App\Http\Controllers\MasterAssessmentController::class, 'destroyMetric'])->name('destroyMetric');
-    });
+    Route::get('/', [App\Http\Controllers\MasterAssessmentController::class, 'index'])->name('index');
+    
+    // Kategori HANYA bisa update aturan periodisasi
+    Route::put('/category/{id}/periodization', [App\Http\Controllers\MasterAssessmentController::class, 'updatePeriodization'])->name('updatePeriodization');
+    
+    // Metric (Item Tes) tetap bisa Full CRUD
+    Route::post('/metric', [App\Http\Controllers\MasterAssessmentController::class, 'storeMetric'])->name('storeMetric');
+    Route::delete('/metric/{id}', [App\Http\Controllers\MasterAssessmentController::class, 'destroyMetric'])->name('destroyMetric');
+});
 
 });
 

@@ -13,7 +13,7 @@ class ClubController extends Controller
 {
     public function index()
     {
-        // UBAH: Urutkan berdasarkan position_number
+        // Urutkan berdasarkan position_number
         $club = Club::with(['players' => function($q) {
             $q->orderBy('position_number', 'asc'); 
         }])->first();
@@ -82,7 +82,7 @@ class ClubController extends Controller
     }
 
     // ==========================================
-    // LOGIKA PEMAIN (Disatukan di Controller ini agar rapi)
+    // LOGIKA PEMAIN
     // ==========================================
 
     public function storePlayer(Request $request)
@@ -96,13 +96,19 @@ class ClubController extends Controller
                 Rule::unique('players')->where('club_id', $club->id)
             ],
             'position' => 'required|in:CB,FB,MF,WF,FW',
-            'highest_velocity' => 'nullable|numeric|min:0', // <-- BARU: Validasi Highest Velocity
+            'highest_velocity' => 'nullable|numeric|min:0',
             'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            
+            // <-- BARU: Validasi atribut fisik
+            'age' => 'nullable|integer|min:5|max:100',
+            'gender' => 'nullable|in:male,female',
+            'height' => 'nullable|numeric|min:0',
+            'weight' => 'nullable|numeric|min:0',
+            'dominant_limb' => 'nullable|in:left,right,both',
         ]);
 
         $photoPath = $request->hasFile('profile_photo') ? $request->file('profile_photo')->store('players', 'public') : null;
 
-        // <-- BARU: Siapkan data array untuk highest_metrics
         $highestMetrics = [];
         if ($request->filled('highest_velocity')) {
             $highestMetrics['highest_velocity'] = $request->highest_velocity;
@@ -113,7 +119,14 @@ class ClubController extends Controller
             'position_number' => $request->position_number,
             'position' => $request->position,
             'profile_photo' => $photoPath,
-            'highest_metrics' => empty($highestMetrics) ? null : $highestMetrics, // <-- BARU: Simpan ke DB
+            'highest_metrics' => empty($highestMetrics) ? null : $highestMetrics,
+            
+            // <-- BARU: Simpan atribut fisik
+            'age' => $request->age,
+            'gender' => $request->gender ?? 'male', // Default laki-laki
+            'height' => $request->height,
+            'weight' => $request->weight,
+            'dominant_limb' => $request->dominant_limb,
         ]);
 
         Activity::log('menambahkan pemain baru', $player->name . ' (#' . $player->position_number . ')', 'create');
@@ -129,15 +142,18 @@ class ClubController extends Controller
             'players' => 'required|array|min:1',
             'players.*.name' => 'required|string|max:255',
             'players.*.position_number' => [
-                'required', 
-                'integer', 
-                'min:1', 
-                'max:99',
-                'distinct',
+                'required', 'integer', 'min:1', 'max:99', 'distinct',
                 Rule::unique('players', 'position_number')->where('club_id', $club->id) 
             ],
             'players.*.position' => 'required|in:CB,FB,MF,WF,FW',
-            'players.*.highest_velocity' => 'nullable|numeric|min:0', // <-- BARU: Tambahkan untuk Bulk jika nanti dari Excel mau di-paste juga
+            'players.*.highest_velocity' => 'nullable|numeric|min:0',
+            
+            // <-- BARU: Validasi Bulk untuk atribut fisik
+            'players.*.age' => 'nullable|integer',
+            'players.*.gender' => 'nullable|in:male,female',
+            'players.*.height' => 'nullable|numeric',
+            'players.*.weight' => 'nullable|numeric',
+            'players.*.dominant_limb' => 'nullable|in:left,right,both',
         ], [
             'players.*.position_number.unique' => 'Salah satu nomor posisi yang Anda paste sudah digunakan oleh pemain di database.',
             'players.*.position_number.distinct' => 'Ada nomor posisi yang kembar/duplikat di dalam data yang Anda paste.',
@@ -147,19 +163,29 @@ class ClubController extends Controller
         $count = 0;
         foreach ($request->players as $playerData) {
             
-            // <-- BARU: Cek highest velocity dari data excel/paste
             $highestMetrics = [];
             if (isset($playerData['highest_velocity']) && $playerData['highest_velocity'] !== '') {
-                // Pastikan format koma (,) menjadi titik (.) agar terbaca sebagai desimal
                 $highestMetrics['highest_velocity'] = (float) str_replace(',', '.', $playerData['highest_velocity']);
             }
+
+            // <-- BARU: Bersihkan data desimal tinggi & berat dari format Excel
+            $height = isset($playerData['height']) && $playerData['height'] !== '' ? (float) str_replace(',', '.', $playerData['height']) : null;
+            $weight = isset($playerData['weight']) && $playerData['weight'] !== '' ? (float) str_replace(',', '.', $playerData['weight']) : null;
+            $dominant_limb = isset($playerData['dominant_limb']) && $playerData['dominant_limb'] !== '' ? strtolower($playerData['dominant_limb']) : null;
 
             $club->players()->create([
                 'name' => $playerData['name'],
                 'position_number' => $playerData['position_number'],
                 'position' => strtoupper($playerData['position']),
-                'highest_metrics' => empty($highestMetrics) ? null : $highestMetrics, // <-- BARU
+                'highest_metrics' => empty($highestMetrics) ? null : $highestMetrics,
                 'profile_photo' => null, 
+                
+                // <-- BARU: Simpan atribut fisik bulk
+                'age' => $playerData['age'] ?? null,
+                'gender' => strtolower($playerData['gender'] ?? 'male'), // Default laki-laki
+                'height' => $height,
+                'weight' => $weight,
+                'dominant_limb' => in_array($dominant_limb, ['left', 'right', 'both']) ? $dominant_limb : null,
             ]);
             $count++;
         }
@@ -178,23 +204,35 @@ class ClubController extends Controller
                 Rule::unique('players')->where('club_id', $player->club_id)->ignore($player->id)
             ],
             'position' => 'required|in:CB,FB,MF,WF,FW',
-            'highest_velocity' => 'nullable|numeric|min:0', // <-- BARU
+            'highest_velocity' => 'nullable|numeric|min:0',
             'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            
+            // <-- BARU: Validasi update atribut fisik
+            'age' => 'nullable|integer|min:5|max:100',
+            'gender' => 'nullable|in:male,female',
+            'height' => 'nullable|numeric|min:0',
+            'weight' => 'nullable|numeric|min:0',
+            'dominant_limb' => 'nullable|in:left,right,both',
         ]);
 
         $player->name = $request->name;
         $player->position_number = $request->position_number;
         $player->position = $request->position;
 
-        // <-- BARU: Update nilai Highest Velocity ke dalam array JSON
-        $highestMetrics = $player->highest_metrics ?? []; // Ambil data lama jika ada
+        $highestMetrics = $player->highest_metrics ?? [];
         if ($request->filled('highest_velocity')) {
             $highestMetrics['highest_velocity'] = $request->highest_velocity;
         } else {
-            // Jika dikosongkan saat update, hapus key highest_velocity
             unset($highestMetrics['highest_velocity']);
         }
         $player->highest_metrics = empty($highestMetrics) ? null : $highestMetrics;
+
+        // <-- BARU: Update atribut fisik
+        $player->age = $request->age;
+        $player->gender = $request->gender ?? 'male';
+        $player->height = $request->height;
+        $player->weight = $request->weight;
+        $player->dominant_limb = $request->dominant_limb;
 
         if ($request->hasFile('profile_photo')) {
             if ($player->profile_photo) Storage::disk('public')->delete($player->profile_photo);

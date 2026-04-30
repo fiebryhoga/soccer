@@ -1,3 +1,5 @@
+// resources/js/Pages/Club/Partials/ManualPlayerForm.jsx
+
 import React from 'react';
 import { User, Camera, Loader2 } from 'lucide-react';
 import InputLabel from '@/Components/InputLabel';
@@ -59,19 +61,56 @@ export default function ManualPlayerForm({
                 </div>
             </div>
 
-            {/* HIGHEST METRICS (BARU) */}
+            {/* HIGHEST METRICS (Velocity) */}
             <div className="pt-2">
                 <InputLabel value="Rekor Max Velocity (km/h) - Opsional" className="text-zinc-700 dark:text-zinc-300" />
                 <TextInput 
-                    type="number" 
-                    step="0.01" 
-                    placeholder="Contoh: 32.50"
+                    type="number" step="0.01" placeholder="Contoh: 32.50"
                     className="mt-1 block w-full bg-white dark:bg-[#0a0a0a] text-emerald-700 dark:text-emerald-400 font-bold border-zinc-200 dark:border-zinc-800 focus:border-emerald-500 focus:ring-emerald-500" 
-                    value={data.highest_velocity} 
-                    onChange={e => setData('highest_velocity', e.target.value)} 
+                    value={data.highest_velocity} onChange={e => setData('highest_velocity', e.target.value)} 
                 />
-                <p className="text-[10px] text-zinc-500 mt-1">Kosongkan jika pemain belum memiliki rekor historis.</p>
                 <InputError message={errors.highest_velocity} className="mt-1" />
+            </div>
+
+            {/* --- PHYSICAL ATTRIBUTES (OPSIONAL) --- */}
+            <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800/80 mt-4">
+                <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3">Physical Attributes (Opsional)</h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                    {/* Umur */}
+                    <div>
+                        <InputLabel value="Umur (Tahun)" className="text-zinc-600 dark:text-zinc-400 text-[11px]" />
+                        <TextInput type="number" min="5" max="100" className="mt-1 block w-full text-sm py-1.5" value={data.age} onChange={e => setData('age', e.target.value)} />
+                    </div>
+                    {/* Gender */}
+                    <div>
+                        <InputLabel value="Gender" className="text-zinc-600 dark:text-zinc-400 text-[11px]" />
+                        <select className="mt-1 block w-full border-zinc-200 dark:border-zinc-800 focus:ring-zinc-900 rounded-md shadow-sm bg-white dark:bg-[#0a0a0a] text-zinc-900 dark:text-zinc-100 py-1.5 text-sm" value={data.gender} onChange={e => setData('gender', e.target.value)}>
+                            <option value="male">Laki-Laki</option>
+                            <option value="female">Perempuan</option>
+                        </select>
+                    </div>
+                    {/* Tinggi */}
+                    <div>
+                        <InputLabel value="Tinggi (cm)" className="text-zinc-600 dark:text-zinc-400 text-[11px]" />
+                        <TextInput type="number" step="0.1" className="mt-1 block w-full text-sm py-1.5" value={data.height} onChange={e => setData('height', e.target.value)} />
+                    </div>
+                    {/* Berat */}
+                    <div>
+                        <InputLabel value="Berat (kg)" className="text-zinc-600 dark:text-zinc-400 text-[11px]" />
+                        <TextInput type="number" step="0.1" className="mt-1 block w-full text-sm py-1.5" value={data.weight} onChange={e => setData('weight', e.target.value)} />
+                    </div>
+                    {/* Dominant Limb */}
+                    <div className="col-span-2">
+                        <InputLabel value="Kaki / Tangan Dominan" className="text-zinc-600 dark:text-zinc-400 text-[11px]" />
+                        <select className="mt-1 block w-full border-zinc-200 dark:border-zinc-800 focus:ring-zinc-900 rounded-md shadow-sm bg-white dark:bg-[#0a0a0a] text-zinc-900 dark:text-zinc-100 py-1.5 text-sm" value={data.dominant_limb} onChange={e => setData('dominant_limb', e.target.value)}>
+                            <option value="">-- Belum Ditentukan --</option>
+                            <option value="right">Kanan (Right)</option>
+                            <option value="left">Kiri (Left)</option>
+                            <option value="both">Keduanya (Ambidextrous)</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
             {/* Tombol Aksi */}

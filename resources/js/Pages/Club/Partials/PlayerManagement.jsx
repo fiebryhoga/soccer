@@ -32,6 +32,11 @@ export default function PlayerManagement({ club }) {
             sortableItems.sort((a, b) => {
                 let aValue = a[sortConfig.key];
                 let bValue = b[sortConfig.key];
+                
+                // Handle null values
+                if (aValue === null) return 1;
+                if (bValue === null) return -1;
+
                 if (typeof aValue === 'string') {
                     return sortConfig.direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
                 }
@@ -58,12 +63,16 @@ export default function PlayerManagement({ club }) {
     // =====================================
     // STATE & LOGIKA: MANUAL INSERT
     // =====================================
-    // UPDATE: Tambahkan highest_velocity ke default form
     const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         name: '',
         position_number: '',
         position: 'FW',
         highest_velocity: '',
+        age: '',
+        gender: 'male',
+        height: '',
+        weight: '',
+        dominant_limb: '',
         profile_photo: null,
         _method: 'post',
     });
@@ -74,9 +83,12 @@ export default function PlayerManagement({ club }) {
     const [isBulkProcessing, setIsBulkProcessing] = useState(false);
     const [bulkErrors, setBulkErrors] = useState({});
     
-    // UPDATE: Tambahkan highest_velocity ke initial row
-    const initialBulkRows = Array.from({ length: 5 }, () => ({ name: '', position_number: '', position: '', highest_velocity: '' }));
-    const [bulkPlayers, setBulkPlayers] = useState(initialBulkRows);
+    // Inisialisasi baris kosong untuk bulk lengkap dengan atribut fisik
+    const initialRowData = { 
+        name: '', position_number: '', position: '', highest_velocity: '',
+        age: '', gender: '', height: '', weight: '', dominant_limb: '' 
+    };
+    const [bulkPlayers, setBulkPlayers] = useState(Array.from({ length: 5 }, () => ({ ...initialRowData })));
 
     const handlePaste = (e, rowIndex, colName) => {
         e.preventDefault();
@@ -89,16 +101,25 @@ export default function PlayerManagement({ club }) {
             
             const targetRowIndex = rowIndex + i;
             if (!newBulkPlayers[targetRowIndex]) {
-                newBulkPlayers[targetRowIndex] = { name: '', position_number: '', position: '', highest_velocity: '' };
+                newBulkPlayers[targetRowIndex] = { ...initialRowData };
             }
 
             if (row.length > 1) {
                 if(row[0] !== undefined) newBulkPlayers[targetRowIndex].name = row[0].trim();
                 if(row[1] !== undefined) newBulkPlayers[targetRowIndex].position_number = row[1].trim();
                 if(row[2] !== undefined) newBulkPlayers[targetRowIndex].position = row[2].trim().toUpperCase();
-                if(row[3] !== undefined) newBulkPlayers[targetRowIndex].highest_velocity = row[3].trim(); // UPDATE: Tangkap kolom ke-4
+                if(row[3] !== undefined) newBulkPlayers[targetRowIndex].highest_velocity = row[3].trim();
+                if(row[4] !== undefined) newBulkPlayers[targetRowIndex].age = row[4].trim();
+                if(row[5] !== undefined) newBulkPlayers[targetRowIndex].gender = row[5].trim().toLowerCase();
+                if(row[6] !== undefined) newBulkPlayers[targetRowIndex].height = row[6].trim();
+                if(row[7] !== undefined) newBulkPlayers[targetRowIndex].weight = row[7].trim();
+                if(row[8] !== undefined) newBulkPlayers[targetRowIndex].dominant_limb = row[8].trim().toLowerCase();
             } else {
-                newBulkPlayers[targetRowIndex][colName] = row[0].trim().toUpperCase();
+                // Jika hanya paste satu sel/kolom ke bawah
+                let val = row[0].trim();
+                if (colName === 'position') val = val.toUpperCase();
+                if (colName === 'gender' || colName === 'dominant_limb') val = val.toLowerCase();
+                newBulkPlayers[targetRowIndex][colName] = val;
             }
         });
         setBulkPlayers(newBulkPlayers);
@@ -111,7 +132,7 @@ export default function PlayerManagement({ club }) {
     };
 
     const addBulkRow = () => {
-        setBulkPlayers([...bulkPlayers, { name: '', position_number: '', position: '', highest_velocity: '' }]);
+        setBulkPlayers([...bulkPlayers, { ...initialRowData }]);
     };
 
     // =====================================
@@ -128,15 +149,24 @@ export default function PlayerManagement({ club }) {
                 name: player.name,
                 position_number: player.position_number,
                 position: player.position,
-                highest_velocity: player.highest_metrics?.highest_velocity || '', // UPDATE: Tarik data lama
+                highest_velocity: player.highest_metrics?.highest_velocity || '', 
+                age: player.age || '',
+                gender: player.gender || 'male',
+                height: player.height || '',
+                weight: player.weight || '',
+                dominant_limb: player.dominant_limb || '',
                 profile_photo: null,
                 _method: 'patch',
             });
             setPlayerPhotoPreview(player.photo_url);
         } else {
-            setData({ name: '', position_number: '', position: 'FW', highest_velocity: '', profile_photo: null, _method: 'post' });
+            setData({ 
+                name: '', position_number: '', position: 'FW', highest_velocity: '', 
+                age: '', gender: 'male', height: '', weight: '', dominant_limb: '',
+                profile_photo: null, _method: 'post' 
+            });
             setPlayerPhotoPreview(null);
-            setBulkPlayers(Array.from({ length: 5 }, () => ({ name: '', position_number: '', position: '', highest_velocity: '' })));
+            setBulkPlayers(Array.from({ length: 5 }, () => ({ ...initialRowData })));
         }
         setIsPlayerModalOpen(true);
     };
@@ -165,7 +195,7 @@ export default function PlayerManagement({ club }) {
     };
 
     const deletePlayer = (id) => {
-        if (confirm('Yakin ingin menghapus pemain ini? Data rekor GPS-nya juga akan hilang.')) {
+        if (confirm('Yakin ingin menghapus pemain ini? Data performa & tes fisiknya juga akan ikut terhapus.')) {
             router.delete(route('players.destroy', id), { preserveScroll: true });
         }
     };
@@ -195,7 +225,9 @@ export default function PlayerManagement({ club }) {
                             <SortableHeader label="No" sortKey="position_number" />
                             <SortableHeader label="Pemain" sortKey="name" />
                             <SortableHeader label="Posisi" sortKey="position" />
-                            <th className="px-6 py-3 text-[11px] font-semibold uppercase text-zinc-500 dark:text-zinc-400">Max Vel</th>
+                            <SortableHeader label="Umur" sortKey="age" />
+                            <SortableHeader label="Tinggi" sortKey="height" />
+                            <SortableHeader label="Berat" sortKey="weight" />
                             <th className="px-6 py-3 text-[11px] font-semibold uppercase text-zinc-500 dark:text-zinc-400 text-right">Aksi</th>
                         </tr>
                     </thead>
@@ -214,7 +246,14 @@ export default function PlayerManagement({ club }) {
                                             alt={player.name} 
                                             className="w-10 h-10 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 shadow-sm"
                                         />
-                                        <span className="font-semibold capitalize text-zinc-900 dark:text-zinc-100">{player.name}</span>
+                                        <div className="flex flex-col">
+                                            <span className="font-semibold capitalize text-zinc-900 dark:text-zinc-100">{player.name}</span>
+                                            {player.dominant_limb && (
+                                                <span className="text-[10px] text-zinc-400 font-medium mt-0.5">
+                                                    Dominan: {player.dominant_limb === 'both' ? 'Keduanya' : player.dominant_limb === 'left' ? 'Kiri' : 'Kanan'}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
@@ -223,13 +262,13 @@ export default function PlayerManagement({ club }) {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
-                                    {player.highest_metrics?.highest_velocity ? (
-                                        <span className="text-emerald-600 dark:text-emerald-500 font-bold text-[13px]">
-                                            {player.highest_metrics.highest_velocity} <span className="text-[9px] text-zinc-400 font-normal">km/h</span>
-                                        </span>
-                                    ) : (
-                                        <span className="text-zinc-300 dark:text-zinc-700">-</span>
-                                    )}
+                                    {player.age ? <span className="text-zinc-600 dark:text-zinc-300 text-sm font-medium">{player.age} thn</span> : <span className="text-zinc-300 dark:text-zinc-700">-</span>}
+                                </td>
+                                <td className="px-6 py-4">
+                                    {player.height ? <span className="text-zinc-600 dark:text-zinc-300 text-sm font-medium">{player.height} cm</span> : <span className="text-zinc-300 dark:text-zinc-700">-</span>}
+                                </td>
+                                <td className="px-6 py-4">
+                                    {player.weight ? <span className="text-zinc-600 dark:text-zinc-300 text-sm font-medium">{player.weight} kg</span> : <span className="text-zinc-300 dark:text-zinc-700">-</span>}
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -245,7 +284,7 @@ export default function PlayerManagement({ club }) {
                         ))}
                         {club.players.length === 0 && (
                             <tr>
-                                <td colSpan="5" className="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400 text-sm">
+                                <td colSpan="7" className="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400 text-sm">
                                     Klub ini belum memiliki pemain.
                                 </td>
                             </tr>
@@ -255,7 +294,7 @@ export default function PlayerManagement({ club }) {
             </div>
 
             {/* Modal Wrapper yang memanggil Partials */}
-            <Modal show={isPlayerModalOpen} onClose={() => setIsPlayerModalOpen(false)} maxWidth={activeTab === 'bulk' ? "2xl" : "lg"}>
+            <Modal show={isPlayerModalOpen} onClose={() => setIsPlayerModalOpen(false)} maxWidth={activeTab === 'bulk' ? "5xl" : "md"}>
                 <div className="p-6 bg-white dark:bg-[#121212] transition-colors rounded-lg overflow-hidden">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">

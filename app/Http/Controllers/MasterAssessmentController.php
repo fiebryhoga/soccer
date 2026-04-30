@@ -9,7 +9,6 @@ use Inertia\Inertia;
 
 class MasterAssessmentController extends Controller
 {
-    // 1. Tampilkan Halaman Master
     public function index()
     {
         $categories = AssessmentCategory::with('metrics')->get();
@@ -18,36 +17,22 @@ class MasterAssessmentController extends Controller
         ]);
     }
 
-    // 2. Simpan atau Update Kategori & Periodisasi
-    public function storeCategory(Request $request)
+    // HANYA MENGUPDATE ATURAN PERIODISASI (Kategori tidak bisa ditambah/dihapus/diganti nama)
+    public function updatePeriodization(Request $request, $id)
     {
         $request->validate([
-            'id' => 'nullable|exists:assessment_categories,id',
-            'name' => 'required|string',
-            'body_part' => 'required|string',
             'periodization_rules' => 'required|array'
         ]);
 
-        AssessmentCategory::updateOrCreate(
-            ['id' => $request->id],
-            [
-                'name' => $request->name,
-                'body_part' => $request->body_part,
-                'periodization_rules' => $request->periodization_rules
-            ]
-        );
+        $category = AssessmentCategory::findOrFail($id);
+        $category->update([
+            'periodization_rules' => $request->periodization_rules
+        ]);
 
-        return back()->with('success', 'Kategori & Aturan Periodisasi berhasil disimpan!');
+        return back()->with('success', 'Aturan Periodisasi berhasil diperbarui!');
     }
 
-    // 3. Hapus Kategori
-    public function destroyCategory($id)
-    {
-        AssessmentCategory::findOrFail($id)->delete();
-        return back()->with('success', 'Kategori berhasil dihapus!');
-    }
-
-    // 4. Simpan atau Update Item Tes (Metrik)
+    // SIMPAN / EDIT ITEM TES
     public function storeMetric(Request $request)
     {
         $request->validate([
@@ -67,7 +52,7 @@ class MasterAssessmentController extends Controller
         return back()->with('success', 'Item Tes berhasil disimpan!');
     }
 
-    // 5. Hapus Item Tes (Metrik)
+    // HAPUS ITEM TES
     public function destroyMetric($id)
     {
         AssessmentMetric::findOrFail($id)->delete();
