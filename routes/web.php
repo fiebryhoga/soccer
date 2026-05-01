@@ -112,6 +112,7 @@ Route::middleware('auth')->group(function () {
     Route::get('performance-logs/{log}/export/excel', [App\Http\Controllers\PerformanceLogController::class, 'exportExcel'])
         ->name('performance-logs.export.excel');
 
+
     Route::get('performance-analysis', [App\Http\Controllers\PerformanceAnalysisController::class, 'index'])
         ->name('performance.analysis');
     

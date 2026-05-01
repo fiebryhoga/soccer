@@ -12,6 +12,7 @@ use Carbon\CarbonPeriod;
 
 class PerformanceAnalysisController extends Controller
 {
+    
     public function strainMonotony(Request $request)
     {
         $club = Club::first();
