@@ -6,85 +6,67 @@ use Illuminate\Http\Request;
 use App\Models\Player;
 use App\Models\AssessmentCategory;
 use App\Models\PlayerAssessment;
+use App\Models\AssessmentTestItem;
 use Inertia\Inertia;
 
 class PlayerAssessmentController extends Controller
 {
-
-    // Menampilkan daftar semua pemain untuk dipilih pelatih
-    public function index()
+    // Tampilkan Halaman Input
+    public function index(Player $player)
     {
-        // Ambil data pemain (disesuaikan dengan field yang ada di tabel Anda)
-        $players = Player::orderBy('position_number')->get(['id', 'name', 'position_number']);
-        
-        return Inertia::render('Player/PhysicalIndex', [
-            'players' => $players
-        ]);
-    }
-    
-    // Menampilkan Halaman Profil Fisik Pemain
-    public function show($playerId)
-    {
-        $player = Player::findOrFail($playerId);
-        
-        // Ambil semua kategori tes beserta item metriknya
-        $categories = AssessmentCategory::with('metrics')->get();
-        
-        // Ambil riwayat hasil tes pemain ini
-        $assessments = PlayerAssessment::where('player_id', $playerId)->get();
+        $categories = AssessmentCategory::with('testItems')->get();
+        $history = PlayerAssessment::where('player_id', $player->id)->get();
 
-        return Inertia::render('Player/PhysicalProfile', [
+        return Inertia::render('Player/AssessmentInput', [
             'player' => $player,
             'categories' => $categories,
-            'assessments' => $assessments
+            'history' => $history
         ]);
     }
 
-    // Menyimpan dan Menghitung Otomatis Hasil Tes
-    public function store(Request $request, $playerId)
+    // Simpan Hasil Tes (Kalkulasi Persentase Otomatis)
+    public function store(Request $request, Player $player)
     {
         $request->validate([
-            'date' => 'required|date',
-            'results' => 'required|array', // Berisi array: metric_id => result_value
+            'results' => 'required|array',
         ]);
 
-        $date = $request->date;
+        // Ambil semua detail item tes untuk kalkulasi
+        $testItems = AssessmentTestItem::whereIn('id', array_keys($request->results))->get()->keyBy('id');
 
-        foreach ($request->results as $metricId => $resultValue) {
-            if (is_null($resultValue)) continue;
+        foreach ($request->results as $itemId => $value) {
+            if (is_null($value) || $value === '') continue;
 
-            $metric = \App\Models\AssessmentMetric::find($metricId);
-            if (!$metric) continue;
+            $item = $testItems->get($itemId);
+            if (!$item) continue;
 
-            // --- LOGIKA PERHITUNGAN PERSENTASE ---
-            $target = $metric->target_value;
+            // --- RUMUS PENGHITUNGAN PERSENTASE ---
             $percentage = 0;
-
-            if ($metric->is_lower_better) {
-                // Untuk Sprint/Waktu: (Target / Hasil) * 100
-                $percentage = ($target / $resultValue) * 100;
-            } else {
-                // Untuk Beban/Jarak: (Hasil / Target) * 100
-                $percentage = ($resultValue / $target) * 100;
+            if ($item->target_benchmark > 0) {
+                if ($item->is_lower_better) {
+                    // Makin kecil makin bagus (Waktu): (Target / Hasil) * 100
+                    $percentage = ($item->target_benchmark / $value) * 100;
+                } else {
+                    // Makin besar makin bagus (Beban/Rep): (Hasil / Target) * 100
+                    $percentage = ($value / $item->target_benchmark) * 100;
+                }
             }
 
-            // Batasi persentase maksimal 100% agar grafik tidak bocor
-            if ($percentage > 100) $percentage = 100;
-
-            // Simpan atau Update Data ke Database
+            // Simpan ke database
             PlayerAssessment::updateOrCreate(
                 [
-                    'player_id' => $playerId,
-                    'metric_id' => $metricId,
-                    'date' => $date
+                    'player_id' => $player->id,
+                    'assessment_test_item_id' => $itemId,
                 ],
                 [
-                    'result_value' => $resultValue,
-                    'percentage' => round($percentage, 2)
+                    'result_value' => $value,
+                    'percentage' => round($percentage, 2),
+                    'weight_snapshot' => $player->weight,
+                    'age_snapshot' => $player->age,
                 ]
             );
         }
 
-        return back()->with('success', 'Hasil Physical Assessment berhasil disimpan & dikalkulasi!');
+        return back()->with('message', 'Assessment fisik berhasil disimpan & dihitung!');
     }
 }

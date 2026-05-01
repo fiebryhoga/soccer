@@ -6,23 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up()
     {
         Schema::create('assessment_categories', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); 
-            $table->string('body_part')->nullable(); 
+            $table->string('name')->unique(); // Flexibility, Strength, dll
+            // Kolom JSON untuk menyimpan array tahapan biomotorik (opsional/bisa kosong)
+            $table->json('biomotor_stages')->nullable(); 
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
         Schema::dropIfExists('assessment_categories');
     }

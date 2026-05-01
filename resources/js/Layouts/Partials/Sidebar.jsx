@@ -21,7 +21,8 @@ import {
     GitCompare, 
     ActivitySquare, 
     Percent, BarChart3, TrendingUp, Radar,
-    Calculator, Dumbbell, Timer,
+    Calculator, Dumbbell, Timer, ClipboardList,
+    UserSearch
 } from 'lucide-react';
 import IconButton from '@/Components/ui/IconButton';
 
@@ -124,11 +125,12 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                     ]
                 },
                 { 
-                    name: 'Physical Profiling', 
-                    icon: ActivitySquare, 
-                    href: route('physical.index'), 
-                    activeRule: 'physical.index|players.physical.show' 
+                    name: 'Player Profiling', 
+                    icon: UserSearch, 
+                    href: route('profiling.index'), 
+                    activeRule: 'profiling.*' 
                 },
+                
                 { 
                     name: 'Formula Calculation', 
                     icon: Calculator, 
@@ -164,15 +166,14 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                     activeRule: 'benchmarks.*', 
                     subItems: [
                         { name: 'Team Benchmark', icon: Users, href: route('benchmarks.index'), activeRule: 'benchmarks.index' },
-                        { name: 'Player Benchmark', icon: User, href: route('players.benchmarks.index'), activeRule: 'players.benchmarks.*' }
+                        { name: 'Player Benchmark', icon: User, href: route('players.benchmarks.index'), activeRule: 'players.benchmarks.*' },
+                        { 
+                            name: 'Assessment Config', 
+                            icon: ClipboardList,
+                            href: route('benchmarks.assessments.index'), 
+                            activeRule: 'benchmarks.assessments.*' 
+                        },
                     ]
-                },
-
-                { 
-                    name: 'Master Assessment', 
-                    icon: Settings, 
-                    href: route('master.assessment.index'), 
-                    activeRule: 'master.assessment.*' 
                 },
                 
                 { name: 'Admins', icon: ShieldCheck, href: route('admins.index'), activeRule: 'admins.*' },

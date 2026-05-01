@@ -12,7 +12,9 @@ use App\Http\Controllers\PerformanceLogController;
 use App\Http\Controllers\PerformanceAnalysisController;
 use App\Http\Controllers\PlayerAnalysisController;
 use App\Http\Controllers\FormulaController;
+use App\Http\Controllers\BenchmarkAssessmentController;
 use App\Http\Controllers\PlayerAssessmentController;
+use App\Http\Controllers\PlayerProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -75,6 +77,13 @@ Route::middleware('auth')->group(function () {
     
     Route::delete('/players/{player}', [ClubController::class, 'destroyPlayer'])->name('players.destroy');
 
+    Route::prefix('benchmarks/assessments')->name('benchmarks.assessments.')->group(function () {
+        Route::get('/', [App\Http\Controllers\BenchmarkAssessmentController::class, 'index'])->name('index');
+        Route::put('/categories/{id}/biomotor', [App\Http\Controllers\BenchmarkAssessmentController::class, 'updateBiomotor'])->name('updateBiomotor');
+        Route::post('/items', [App\Http\Controllers\BenchmarkAssessmentController::class, 'storeTestItem'])->name('storeTestItem');
+        Route::delete('/items/{id}', [App\Http\Controllers\BenchmarkAssessmentController::class, 'destroyTestItem'])->name('destroyTestItem');
+    });
+
 
     Route::get('/benchmarks', [BenchmarkController::class, 'index'])->name('benchmarks.index');
     Route::get('/benchmarks/create', [BenchmarkController::class, 'create'])->name('benchmarks.create');
@@ -131,22 +140,17 @@ Route::middleware('auth')->group(function () {
         Route::post('/save-test', [App\Http\Controllers\FormulaController::class, 'saveTest'])->name('saveTest');
     });
 
-    // ROUTE PHYSICAL PROFILING
-    Route::get('/physical-profiling', [App\Http\Controllers\PlayerAssessmentController::class, 'index'])->name('physical.index');
-    Route::get('/players/{player}/physical-profile', [App\Http\Controllers\PlayerAssessmentController::class, 'show'])->name('players.physical.show');
-    Route::post('/players/{player}/physical-profile', [App\Http\Controllers\PlayerAssessmentController::class, 'store'])->name('players.physical.store');
+    Route::get('/players/{player}/assessments', [App\Http\Controllers\PlayerAssessmentController::class, 'index'])->name('players.assessments.index');
+    Route::post('/players/{player}/assessments', [App\Http\Controllers\PlayerAssessmentController::class, 'store'])->name('players.assessments.store');
 
-    // ROUTE MASTER ASSESSMENT (ADMIN)
-    Route::prefix('master-assessment')->name('master.assessment.')->group(function () {
-    Route::get('/', [App\Http\Controllers\MasterAssessmentController::class, 'index'])->name('index');
+    Route::prefix('profiling')->name('profiling.')->group(function () {
+        Route::get('/', [App\Http\Controllers\PlayerProfileController::class, 'index'])->name('index');
+
+        Route::get('/{player}', [App\Http\Controllers\PlayerProfileController::class, 'show'])->name('show');
+        // Nanti rute detail pemain masuk ke sini
+    });
+
     
-    // Kategori HANYA bisa update aturan periodisasi
-    Route::put('/category/{id}/periodization', [App\Http\Controllers\MasterAssessmentController::class, 'updatePeriodization'])->name('updatePeriodization');
-    
-    // Metric (Item Tes) tetap bisa Full CRUD
-    Route::post('/metric', [App\Http\Controllers\MasterAssessmentController::class, 'storeMetric'])->name('storeMetric');
-    Route::delete('/metric/{id}', [App\Http\Controllers\MasterAssessmentController::class, 'destroyMetric'])->name('destroyMetric');
-});
 
 });
 

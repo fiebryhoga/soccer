@@ -6,14 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class AssessmentCategory extends Model
 {
-    protected $fillable = ['name', 'body_part', 'periodization_rules'];
+    protected $fillable = ['name', 'biomotor_stages'];
 
     protected $casts = [
-        'periodization_rules' => 'array',
+        'biomotor_stages' => 'array',
     ];
 
-    public function metrics()
+    public function testItems()
     {
-        return $this->hasMany(AssessmentMetric::class, 'category_id');
+        return $this->hasMany(AssessmentTestItem::class, 'category_id');
     }
 }

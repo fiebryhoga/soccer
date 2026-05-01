@@ -1,18 +1,18 @@
 <?php
+
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Model;
 
 class PlayerAssessment extends Model
 {
-    protected $fillable = ['player_id', 'metric_id', 'result_value', 'percentage', 'date'];
+    protected $fillable = [
+        'player_id', 'assessment_test_item_id', 
+        'result_value', 'percentage', 'weight_snapshot', 'age_snapshot'
+    ];
 
-    public function player()
+    public function item()
     {
-        return $this->belongsTo(Player::class);
-    }
-
-    public function metric()
-    {
-        return $this->belongsTo(AssessmentMetric::class, 'metric_id');
+        return $this->belongsTo(AssessmentTestItem::class, 'assessment_test_item_id');
     }
 }
