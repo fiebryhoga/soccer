@@ -184,6 +184,7 @@ class PerformanceLogController extends Controller
             'title' => $request->title,
             'benchmark_id' => $request->benchmark_id,
             'player_benchmark_id' => $request->player_benchmark_id, // Sekarang pasti tersimpan!
+            'custom_charts' => $request->custom_charts,
         ]);
 
         // 2. SINKRONISASI PEMAIN BENCH VS AKTIF

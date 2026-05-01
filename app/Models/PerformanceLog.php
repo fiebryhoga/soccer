@@ -15,12 +15,14 @@ class PerformanceLog extends Model
         'selected_metrics', 
         'tag', 
         'benchmark_id',           
-        'player_benchmark_id'     
+        'player_benchmark_id',
+        'custom_charts'     
     ];
 
     // Otomatis ubah JSON ke Array PHP
     protected $casts = [
         'selected_metrics' => 'array',
+        'custom_charts' => 'array',
     ];
 
     public function benchmark() {
