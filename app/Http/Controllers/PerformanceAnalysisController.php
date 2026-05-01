@@ -88,7 +88,7 @@ class PerformanceAnalysisController extends Controller
             $weekNumber++;
         }
 
-        return inertia('PerformanceLogs/Analysis/StrainMonotony', [
+        return inertia('TeamAnalysis/StrainMonotony', [
             'weeksData' => $weeksData,
             'startDate' => $startOfWeek->toDateString(),
             'endDate' => $endOfWeek->toDateString(),
@@ -163,7 +163,7 @@ class PerformanceAnalysisController extends Controller
             ];
         }
 
-        return inertia('PerformanceLogs/Analysis/ACWR', [
+        return inertia('TeamAnalysis/ACWR', [
             'historicalData' => $dailyData,
             'startDate' => $startDateParam,
             'endDate' => $endDateParam,
@@ -173,60 +173,113 @@ class PerformanceAnalysisController extends Controller
     public function comparison(Request $request)
     {
         $club = Club::first();
-        $sessionIds = $request->input('session_ids', []); // Array ID sesi yang dipilih manual
-        $tags = $request->input('tags', []); // Array tag yang dipilih (misal: MD-3)
+        if (!$club) return redirect()->back()->with('error', 'Klub belum diatur.');
+
+        $sessionIds = $request->input('session_ids', []); 
+        $tags = $request->input('tags', []); 
 
         $query = PerformanceLog::with('benchmark')->where('club_id', $club->id)->where('type', '!=', 'off');
 
-        // Filter berdasarkan ID manual atau berdasarkan Tag
         if (!empty($sessionIds)) {
             $query->whereIn('id', $sessionIds);
         } elseif (!empty($tags)) {
             $query->whereIn('tag', $tags);
         } else {
-            // Default: Ambil 3 sesi terakhir yang bukan OFF
             $query->orderBy('date', 'desc')->limit(3);
         }
 
         $logs = $query->orderBy('date', 'asc')->get();
         $players = Player::all();
 
-        $comparisonData = $logs->map(function($log) use ($players) {
-            $metrics = PlayerMetric::where('performance_log_id', $log->id)->get();
-            
-            return [
-                'id' => $log->id,
-                'title' => $log->title,
-                'date' => $log->date,
-                'tag' => $log->tag,
-                'averages' => $this->calculateTeamAverageForSession($players, $metrics, $log->benchmark, [
-                    'total_distance', 
-                    'dist_per_min', 
-                    'hir_18_24_kmh', 
-                    'sprint_distance', 
-                    'total_18kmh', 
-                    'accels', 
-                    'decels', 
-                    'hr_band_4_dist', 
-                    'hr_band_4_dur', // <-- WAJIB ADA DI SINI
-                    'hr_band_5_dist', 
-                    'hr_band_5_dur', // <-- WAJIB ADA DI SINI
-                    'max_velocity', 
-                    'player_load'
-                ])
-            ];
-        });
-
-        // Ambil list semua sesi untuk dropdown pilihan manual
         $allSessions = PerformanceLog::where('club_id', $club->id)->where('type', '!=', 'off')->orderBy('date', 'desc')->get(['id', 'title', 'date', 'tag']);
-        // Ambil list unik tag yang tersedia
         $availableTags = PerformanceLog::whereNotNull('tag')->distinct()->pluck('tag');
 
-        return inertia('PerformanceLogs/Analysis/Comparison', [
-            'comparisonData' => $comparisonData,
-            'allSessions' => $allSessions,
-            'availableTags' => $availableTags,
-        ]);
+        // LOGIKA BARU: Cek jumlah sesi yang ditemukan
+        if ($logs->count() === 1) {
+            // ---------------------------------------------------------
+            // SINGLE SESSION MODE (Analysis)
+            // ---------------------------------------------------------
+            $singleLog = $logs->first();
+            $metrics = PlayerMetric::where('performance_log_id', $singleLog->id)->get();
+            
+            $playerMetricsData = [];
+            foreach ($players as $player) {
+                $playerMetric = $metrics->where('player_id', $player->id)->first();
+                if ($playerMetric) {
+                     $rawMetrics = is_array($playerMetric->metrics) ? $playerMetric->metrics : json_decode($playerMetric->metrics, true);
+                     $playerMetricsData[] = [
+                         'player' => [
+                             'id' => $player->id,
+                             'name' => $player->name,
+                             'position' => $player->position,
+                             'position_number' => $player->position_number,
+                         ],
+                         'metrics' => $rawMetrics
+                     ];
+                }
+            }
+
+            $teamAverage = $this->calculateTeamAverageForSession($players, $metrics, $singleLog->benchmark, [
+                 'total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 
+                 'total_18kmh', 'accels', 'decels', 'hr_band_4_dist', 'hr_band_4_dur', 
+                 'hr_band_5_dist', 'hr_band_5_dur', 'max_velocity', 'player_load'
+            ]);
+
+            // KEMBALI KE FILE COMPARISON.JSX
+            return inertia('TeamAnalysis/Comparison', [ 
+                'isSingleSession' => true,
+                'sessionData' => [
+                    'id' => $singleLog->id,
+                    'title' => $singleLog->title ?: strtoupper($singleLog->type),
+                    'date' => $singleLog->date,
+                    'tag' => $singleLog->tag,
+                    'teamAverages' => $teamAverage,
+                    'playerMetrics' => $playerMetricsData
+                ],
+                'allSessions' => $allSessions,
+                'availableTags' => $availableTags,
+                'filters' => $request->only(['session_ids', 'tags'])
+            ]);
+
+        } else {
+            // ---------------------------------------------------------
+            // MULTI-SESSION MODE (Comparison)
+            // ---------------------------------------------------------
+            $comparisonData = $logs->map(function($log) use ($players) {
+                $metrics = PlayerMetric::where('performance_log_id', $log->id)->get();
+                
+                return [
+                    'id' => $log->id,
+                    'title' => $log->title ?: strtoupper($log->type),
+                    'date' => $log->date,
+                    'tag' => $log->tag,
+                    'averages' => $this->calculateTeamAverageForSession($players, $metrics, $log->benchmark, [
+                        'total_distance', 
+                        'dist_per_min', 
+                        'hir_18_24_kmh', 
+                        'sprint_distance', 
+                        'total_18kmh', 
+                        'accels', 
+                        'decels', 
+                        'hr_band_4_dist', 
+                        'hr_band_4_dur',
+                        'hr_band_5_dist', 
+                        'hr_band_5_dur',
+                        'max_velocity', 
+                        'player_load'
+                    ])
+                ];
+            });
+
+            // KEMBALI KE FILE COMPARISON.JSX JUGA
+            return inertia('TeamAnalysis/Comparison', [
+                'isSingleSession' => false,
+                'comparisonData' => $comparisonData,
+                'allSessions' => $allSessions,
+                'availableTags' => $availableTags,
+                'filters' => $request->only(['session_ids', 'tags'])
+            ]);
+        }
     }
 
     private function calculateTeamAverageForSession($players, $metrics, $benchmark, $columnsToAverage)

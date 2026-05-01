@@ -72,7 +72,7 @@ class PlayerAnalysisController extends Controller
             }
         }
 
-        return inertia('Analysis/PlayerStrainMonotony', [
+        return inertia('PlayerAnalysis/PlayerStrainMonotony', [
             'players' => $players,
             'selectedPlayerId' => (int) $playerId,
             'weeksData' => $weeksData,
@@ -121,7 +121,7 @@ class PlayerAnalysisController extends Controller
             }
         }
 
-        return inertia('Analysis/PlayerACWR', [
+        return inertia('PlayerAnalysis/PlayerACWR', [
             'players' => $players,
             'selectedPlayerId' => (int) $playerId,
             'dailyLogs' => $dailyLogs, // Mengirim data harian
