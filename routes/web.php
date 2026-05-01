@@ -121,6 +121,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/analysis/strain-monotony', [PerformanceAnalysisController::class, 'strainMonotony'])->name('analysis.strain');
     Route::get('/analysis/acwr', [PerformanceAnalysisController::class, 'acwr'])->name('analysis.acwr');
     Route::get('/analysis/comparison', [PerformanceAnalysisController::class, 'comparison'])->name('analysis.comparison');
+    Route::get('/performance-logs/analysis/session', [PerformanceAnalysisController::class, 'sessionAnalysis'])
+    ->name('team.analysis.session');
 
     Route::prefix('players-benchmarks')->group(function () {
         Route::get('/', [PlayerBenchmarkController::class, 'index'])->name('players.benchmarks.index');
