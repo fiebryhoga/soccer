@@ -20,7 +20,7 @@ export default function Navbar({ toggleTheme, isDarkMode, user }) {
     };
 
     return (
-        <nav className="h-16 shrink-0 flex items-center justify-between px-4 sm:px-6 bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] dark:shadow-none z-10 transition-colors">
+        <nav className="h-16 shrink-0 flex items-center justify-between px-4 sm:px-6 bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] dark:shadow-none z-50 transition-colors">
             
             <div className="flex items-center gap-4 flex-1">
                 <IconButton icon={Menu} className="sm:hidden" />

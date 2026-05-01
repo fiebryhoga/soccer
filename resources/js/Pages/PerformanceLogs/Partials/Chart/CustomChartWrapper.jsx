@@ -19,7 +19,6 @@ const getMetricCategory = (colId) => {
 export default function CustomChartWrapper({ chartConfig, log, playersData, onUpdate, onRemove, calculateTeamPercentage }) {
     const isMatch = log.type === 'match';
     
-    // STATES
     const [selectedParams, setSelectedParams] = useState(chartConfig.selectedParams || []); 
     const [paramColors, setParamColors] = useState(chartConfig.paramColors || {}); 
     const [chartType, setChartType] = useState(chartConfig.chartType || 'bar');
@@ -28,17 +27,8 @@ export default function CustomChartWrapper({ chartConfig, log, playersData, onUp
     const [isZoomed, setIsZoomed] = useState(chartConfig.isZoomed ?? true); 
     const [customTitle, setCustomTitle] = useState(chartConfig.customTitle || '');
 
-
     useEffect(() => {
-        onUpdate({
-            selectedParams,
-            paramColors,
-            chartType,
-            sortBy,
-            sortOrder,
-            isZoomed,
-            customTitle
-        });
+        onUpdate({ selectedParams, paramColors, chartType, sortBy, sortOrder, isZoomed, customTitle });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedParams, paramColors, chartType, sortBy, sortOrder, isZoomed, customTitle]);
     
@@ -50,18 +40,16 @@ export default function CustomChartWrapper({ chartConfig, log, playersData, onUp
         baseCols.forEach(col => {
             const cat = getMetricCategory(col.id);
             if (!groups[cat]) groups[cat] = [];
-            
             groups[cat].push({ id: col.id, label: col.header || col.id, isRaw: true });
             groups[cat].push({ id: `avg_pos_${col.id}`, label: `Avg Pos: ${col.header}`, isAvg: true, baseId: col.id });
-            // % Target sudah dihapus dari sini
         });
         return groups;
     }, [isMatch]);
 
     const { chartData, positionDividers } = useMemo(() => {
         const activePlayersRaw = playersData.filter(p => p.is_playing !== false);
-
         const posStats = {};
+        
         activePlayersRaw.forEach(p => {
             if (!posStats[p.position]) posStats[p.position] = {};
             Object.values(groupedOptions).flat().filter(m => m.isRaw).forEach(m => {
@@ -75,18 +63,8 @@ export default function CustomChartWrapper({ chartConfig, log, playersData, onUp
             });
         });
 
-        const posAverages = {};
-        Object.keys(posStats).forEach(pos => {
-            posAverages[pos] = {};
-            Object.values(groupedOptions).flat().filter(m => m.isRaw).forEach(m => {
-                const count = posStats[pos][m.id].count;
-                posAverages[pos][m.id] = count > 0 ? (posStats[pos][m.id].sum / count) : 0;
-            });
-        });
-
         let activePlayers = activePlayersRaw.map(p => {
             const dataObj = { id: p.player_id, originalName: p.name, position: p.position };
-            
             const parts = p.name.trim().split(' ');
             dataObj.formattedName = parts.length === 1 ? parts[0] : `${parts[0].charAt(0)}. ${parts[parts.length - 1]}`;
             
@@ -97,11 +75,9 @@ export default function CustomChartWrapper({ chartConfig, log, playersData, onUp
                     const avgVal = count > 0 ? (posStats[p.position][baseId].sum / count) : 0;
                     dataObj[paramId] = parseFloat(avgVal.toFixed(2));
                     dataObj[`raw_${paramId}`] = avgVal.toFixed(1); 
-                } 
-                else {
+                } else {
                     let rawVal = (p.metrics?.[paramId] || '').toString();
                     dataObj[`raw_${paramId}`] = rawVal;
-                    
                     if (rawVal.includes(':')) {
                         const parts = rawVal.split(':').map(Number);
                         dataObj[paramId] = parts.length === 2 ? (parts[0]*60)+(parts[1]||0) : (parts[0]*3600)+(parts[1]*60)+(parts[2]||0);
@@ -121,7 +97,6 @@ export default function CustomChartWrapper({ chartConfig, log, playersData, onUp
             let diff = 0;
             if (sortBy === 'name' || sortBy === 'position') diff = a.originalName.localeCompare(b.originalName);
             else diff = (a[sortBy] || 0) - (b[sortBy] || 0);
-
             return sortOrder === 'desc' ? -diff : diff;
         });
 
@@ -141,10 +116,8 @@ export default function CustomChartWrapper({ chartConfig, log, playersData, onUp
                 cData.push({ formattedName: gapId, isGap: true });
                 dividers.push({ xLabel: gapId, label: player.position });
             }
-            
             if (!posRanges[player.position]) posRanges[player.position] = { start: cData.length, end: cData.length };
             posRanges[player.position].end = cData.length;
-
             cData.push(player);
             currentPos = player.position;
         });
@@ -153,9 +126,7 @@ export default function CustomChartWrapper({ chartConfig, log, playersData, onUp
             if (item.isGap) return;
             const mid = Math.floor((posRanges[item.position].start + posRanges[item.position].end) / 2);
             selectedParams.forEach(param => {
-                if (param.startsWith('avg_pos_') && idx !== mid) {
-                    item[`hide_label_${param}`] = true;
-                }
+                if (param.startsWith('avg_pos_') && idx !== mid) item[`hide_label_${param}`] = true;
             });
         });
 
@@ -163,35 +134,17 @@ export default function CustomChartWrapper({ chartConfig, log, playersData, onUp
     }, [playersData, selectedParams, sortBy, sortOrder, groupedOptions]);
 
     return (
-        <div className="relative bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-visible flex flex-col mb-6">
+        <div className="relative bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-sm overflow-visible flex flex-col mb-8 transition-all hover:shadow-md">
             <ChartControls 
-                groupedOptions={groupedOptions}
-                selectedParams={selectedParams}
-                setSelectedParams={setSelectedParams}
-                paramColors={paramColors}
-                setParamColors={setParamColors}
-                COLOR_PALETTE={COLOR_PALETTE}
-                chartType={chartType}
-                setChartType={setChartType}
-                sortBy={sortBy}
-                setSortBy={setSortBy}
-                sortOrder={sortOrder}
-                setSortOrder={setSortOrder}
-                isZoomed={isZoomed}
-                setIsZoomed={setIsZoomed}
-                customTitle={customTitle}
-                setCustomTitle={setCustomTitle}
-                onRemove={onRemove}
+                groupedOptions={groupedOptions} selectedParams={selectedParams} setSelectedParams={setSelectedParams}
+                paramColors={paramColors} setParamColors={setParamColors} COLOR_PALETTE={COLOR_PALETTE}
+                chartType={chartType} setChartType={setChartType} sortBy={sortBy} setSortBy={setSortBy}
+                sortOrder={sortOrder} setSortOrder={setSortOrder} isZoomed={isZoomed} setIsZoomed={setIsZoomed}
+                customTitle={customTitle} setCustomTitle={setCustomTitle} onRemove={onRemove}
             />
-
             <ChartCanvas 
-                chartData={chartData}
-                positionDividers={positionDividers}
-                selectedParams={selectedParams}
-                paramColors={paramColors}
-                groupedOptions={groupedOptions}
-                chartType={chartType}
-                isZoomed={isZoomed}
+                chartData={chartData} positionDividers={positionDividers} selectedParams={selectedParams}
+                paramColors={paramColors} groupedOptions={groupedOptions} chartType={chartType} isZoomed={isZoomed}
             />
         </div>
     );

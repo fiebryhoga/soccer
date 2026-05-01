@@ -335,6 +335,7 @@ class PerformanceLogController extends Controller
              } elseif (is_numeric($activeBenchmark['metrics'][$colId])) {
                  $targetValue = floatval($activeBenchmark['metrics'][$colId]); 
              } elseif (!$position) {
+                 // Untuk Rata-rata Tim (karena tidak bawa posisi)
                  $vals = array_values($activeBenchmark['metrics'][$colId]);
                  $targetValue = count($vals) > 0 ? array_sum($vals) / count($vals) : 100;
              }
@@ -369,6 +370,99 @@ class PerformanceLogController extends Controller
         return 0;
     }
 
+    // FUNGSI BARU: Sentralisasi perhitungan Team Average agar DRY dan akurat sesuai UI React
+    private function calculateTeamAverages($logType, $reportData, $benchmark)
+    {
+        $averages = [];
+        // Semua kolom yang mungkin ada di report
+        $allColumns = [
+            'duration_1st', 'duration_2nd', 'total_distance', 'dist_per_min', 'distance_1st', 'distance_2nd',
+            'hir_18_24_kmh', 'sprint_distance', 'total_18kmh', 'accels', 'decels',
+            'hr_band_4_dist', 'hr_band_4_dur', 'hr_band_5_dist', 'hr_band_5_dur',
+            'max_velocity', 'highest_velocity', 'player_load'
+        ];
+
+        // Pengelompokan Logika
+        $distanceGroup = ['total_distance', 'dist_per_min', 'distance_1st', 'distance_2nd', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh'];
+        $hr4Group = ['hr_band_4_dist', 'hr_band_4_dur'];
+        $hr5Group = ['hr_band_5_dist', 'hr_band_5_dur'];
+        $plGroup = ['player_load'];
+        
+        // Kolom yg dibagi 10 jika tipenya Match
+        $divideBy10Cols = array_merge($distanceGroup, ['player_load']);
+        $timeCols = ['duration_1st', 'duration_2nd', 'hr_band_4_dur', 'hr_band_5_dur'];
+        
+        // Kolom yg memiliki persentase benchmark
+        $percentCols = ['total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh', 'max_velocity', 'player_load'];
+
+        foreach ($allColumns as $col) {
+            $sum = 0;
+            $count = 0;
+            $isTime = in_array($col, $timeCols);
+
+            foreach ($reportData as $player) {
+                $metrics = $player->session_metrics ?? [];
+
+                // Validasi Checkbox (Default true jika tidak diset)
+                $isSelected = $metrics['selected'] ?? true;
+                $isSelectedHR4 = $metrics['selected_hr4'] ?? true;
+                $isSelectedHR5 = $metrics['selected_hr5'] ?? true;
+                $isSelectedPL = $metrics['selected_pl'] ?? true;
+
+                $isValid = true;
+                if (in_array($col, $distanceGroup) && !$isSelected) $isValid = false;
+                if (in_array($col, $hr4Group) && !$isSelectedHR4) $isValid = false;
+                if (in_array($col, $hr5Group) && !$isSelectedHR5) $isValid = false;
+                if (in_array($col, $plGroup) && !$isSelectedPL) $isValid = false;
+
+                if ($isValid && isset($metrics[$col]) && $metrics[$col] !== '' && $metrics[$col] !== '-') {
+                    if ($isTime) {
+                        $sum += $this->timeToSeconds($metrics[$col]);
+                        $count++;
+                    } else {
+                        $val = floatval($metrics[$col]);
+                        if (!is_nan($val)) {
+                            $sum += $val;
+                            $count++;
+                        }
+                    }
+                }
+            }
+
+            if ($count === 0 && $sum === 0) {
+                $averages[$col] = '-';
+                continue;
+            }
+
+            // Logika Pembagi (Match vs Training)
+            if ($logType === 'match' && in_array($col, $divideBy10Cols)) {
+                $count = 10;
+            } elseif ($count === 0) {
+                $averages[$col] = '-';
+                continue;
+            }
+
+            // Hasil Akhir
+            if ($isTime) {
+                $avgSeconds = round($sum / $count);
+                $h = floor($avgSeconds / 3600);
+                $m = floor(($avgSeconds % 3600) / 60);
+                $s = $avgSeconds % 60;
+                $averages[$col] = sprintf("%02d.%02d.%02d", $h, $m, $s);
+            } else {
+                $avg = $sum / $count;
+                $averages[$col] = floor($avg) == $avg ? (string)$avg : number_format($avg, 1, '.', '');
+            }
+
+            // Hitung Persentase Team Average (Jika kolom ini butuh %)
+            if (in_array($col, $percentCols) && $averages[$col] !== '-') {
+                $averages[$col . '_percent'] = $this->calculatePercentage($col, $averages[$col], null, $benchmark, []);
+            }
+        }
+
+        return $averages;
+    }
+
     // ==========================================
     // EXPORT PDF
     // ==========================================
@@ -383,60 +477,46 @@ class PerformanceLogController extends Controller
 
         $reportData = $players->map(function($player) use ($metrics, $benchmark) {
             $playerMetric = $metrics->get($player->id);
-            $rawMetrics = $playerMetric ? $playerMetric->metrics : [];
+            // Lewati pemain yang tidak berpartisipasi (tidak ada di tabel player_metrics)
+            if (!$playerMetric) return null;
+
+            $rawMetrics = $playerMetric->metrics ?? [];
             $historicalHighest = $player->highest_metrics ?? [];
-            
-            $player->sort_order = $playerMetric ? $playerMetric->sort_order : null;
+            $player->sort_order = $playerMetric->sort_order;
 
             $calculatedData = [];
-            $columnsToCalculate = [
+            // Semua kolom yang perlu dihitung valuenya / persennya untuk EXPORT
+            $columnsToProcess = [
                 'total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 
-                'total_18kmh', 'max_velocity', 'highest_velocity'
+                'total_18kmh', 'max_velocity', 'highest_velocity', 'player_load'
             ];
 
-            foreach ($columnsToCalculate as $colId) {
+            foreach ($columnsToProcess as $colId) {
                 $val = $this->getAutoCalculatedValue($rawMetrics, $colId, $historicalHighest);
                 $calculatedData[$colId] = $val;
-                $calculatedData[$colId . '_percent'] = $this->calculatePercentage($colId, $val, $player->position, $benchmark, $historicalHighest);
+                
+                // Jika butuh persen, hitung berdasar benchmark
+                if (in_array($colId, ['total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh', 'max_velocity', 'player_load'])) {
+                    $calculatedData[$colId . '_percent'] = $this->calculatePercentage($colId, $val, $player->position, $benchmark, $historicalHighest);
+                }
             }
 
             $player->session_metrics = array_merge($rawMetrics, $calculatedData);
             return $player;
-        });
+        })->filter(); // Buang pemain null (yang tidak bermain)
 
+        // Sorting
         $reportData = $reportData->sort(function ($a, $b) {
-            if ($a->sort_order !== null && $b->sort_order !== null) {
-                return $a->sort_order <=> $b->sort_order;
-            }
-
+            if ($a->sort_order !== null && $b->sort_order !== null) return $a->sort_order <=> $b->sort_order;
             $positionOrder = ['CB' => 1, 'FB' => 2, 'MF' => 3, 'WF' => 4, 'FW' => 5];
             $posA = $positionOrder[strtoupper($a->position)] ?? 99;
             $posB = $positionOrder[strtoupper($b->position)] ?? 99;
-
-            if ($posA !== $posB) {
-                return $posA <=> $posB;
-            }
-
+            if ($posA !== $posB) return $posA <=> $posB;
             return strcmp($a->name, $b->name);
         })->values(); 
 
-        $teamAverage = [];
-        $columnsToAverage = [
-            'total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh', 'max_velocity'
-        ];
-        
-        foreach ($columnsToAverage as $col) {
-            $sum = 0; $count = 0;
-            foreach ($reportData as $p) {
-                if (isset($p->session_metrics[$col]) && is_numeric($p->session_metrics[$col])) {
-                    $sum += floatval($p->session_metrics[$col]);
-                    $count++;
-                }
-            }
-            $avgVal = $count > 0 ? ($sum / $count) : 0;
-            $teamAverage[$col] = number_format($avgVal, 1, '.', '');
-            $teamAverage[$col . '_percent'] = $this->calculatePercentage($col, $teamAverage[$col], null, $benchmark, []);
-        }
+        // Kalkulasi Team Average tersentralisasi
+        $teamAverage = $this->calculateTeamAverages($log->type, $reportData, $benchmark);
 
         Activity::log('mengunduh laporan PDF', $log->title, 'export');
 
@@ -447,7 +527,7 @@ class PerformanceLogController extends Controller
             'teamAverage' => $teamAverage
         ])->setPaper('a3', 'landscape');
 
-        return $pdf->download("Daily_Training_Report_{$log->date}.pdf");
+        return $pdf->download("Daily_{$log->type}_Report_{$log->date}.pdf");
     }
 
     // ==========================================
@@ -464,60 +544,42 @@ class PerformanceLogController extends Controller
 
         $reportData = $players->map(function($player) use ($metrics, $benchmark) {
             $playerMetric = $metrics->get($player->id);
-            $rawMetrics = $playerMetric ? $playerMetric->metrics : [];
+            if (!$playerMetric) return null;
+
+            $rawMetrics = $playerMetric->metrics ?? [];
             $historicalHighest = $player->highest_metrics ?? [];
-            
-            $player->sort_order = $playerMetric ? $playerMetric->sort_order : null;
+            $player->sort_order = $playerMetric->sort_order;
 
             $calculatedData = [];
-            $columnsToCalculate = [
+            $columnsToProcess = [
                 'total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 
-                'total_18kmh', 'max_velocity', 'highest_velocity'
+                'total_18kmh', 'max_velocity', 'highest_velocity', 'player_load'
             ];
 
-            foreach ($columnsToCalculate as $colId) {
+            foreach ($columnsToProcess as $colId) {
                 $val = $this->getAutoCalculatedValue($rawMetrics, $colId, $historicalHighest);
                 $calculatedData[$colId] = $val;
-                $calculatedData[$colId . '_percent'] = $this->calculatePercentage($colId, $val, $player->position, $benchmark, $historicalHighest);
+                
+                if (in_array($colId, ['total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh', 'max_velocity', 'player_load'])) {
+                    $calculatedData[$colId . '_percent'] = $this->calculatePercentage($colId, $val, $player->position, $benchmark, $historicalHighest);
+                }
             }
 
             $player->session_metrics = array_merge($rawMetrics, $calculatedData);
             return $player;
-        });
+        })->filter();
 
         $reportData = $reportData->sort(function ($a, $b) {
-            if ($a->sort_order !== null && $b->sort_order !== null) {
-                return $a->sort_order <=> $b->sort_order;
-            }
-
+            if ($a->sort_order !== null && $b->sort_order !== null) return $a->sort_order <=> $b->sort_order;
             $positionOrder = ['CB' => 1, 'FB' => 2, 'MF' => 3, 'WF' => 4, 'FW' => 5];
             $posA = $positionOrder[strtoupper($a->position)] ?? 99;
             $posB = $positionOrder[strtoupper($b->position)] ?? 99;
-
-            if ($posA !== $posB) {
-                return $posA <=> $posB;
-            }
-
+            if ($posA !== $posB) return $posA <=> $posB;
             return strcmp($a->name, $b->name);
         })->values(); 
 
-        $teamAverage = [];
-        $columnsToAverage = [
-            'total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh', 'max_velocity'
-        ];
-        
-        foreach ($columnsToAverage as $col) {
-            $sum = 0; $count = 0;
-            foreach ($reportData as $p) {
-                if (isset($p->session_metrics[$col]) && is_numeric($p->session_metrics[$col])) {
-                    $sum += floatval($p->session_metrics[$col]);
-                    $count++;
-                }
-            }
-            $avgVal = $count > 0 ? ($sum / $count) : 0;
-            $teamAverage[$col] = number_format($avgVal, 1, '.', '');
-            $teamAverage[$col . '_percent'] = $this->calculatePercentage($col, $teamAverage[$col], null, $benchmark, []);
-        }
+        // Kalkulasi Team Average tersentralisasi
+        $teamAverage = $this->calculateTeamAverages($log->type, $reportData, $benchmark);
 
         Activity::log('mengunduh laporan Excel', $log->title, 'export');
 

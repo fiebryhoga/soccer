@@ -5,12 +5,12 @@ import { GripVertical, CheckSquare, Square, Eraser, CheckCircle2, MinusCircle, M
 import { FIXED_EXCEL_COLUMNS } from '@/Constants/metrics';
 
 const STICKY_COLS = {
-    c1: { left: 0, width: 40, minWidth: 40, maxWidth: 40, boxSizing: 'border-box' },   // NO (Paling Kiri)
-    c2: { left: 40, width: 40, minWidth: 40, maxWidth: 40, boxSizing: 'border-box' },  // Checkbox
-    c3: { left: 80, width: 50, minWidth: 50, maxWidth: 50, boxSizing: 'border-box' },  // Actions
-    c4: { left: 130, width: 50, minWidth: 50, maxWidth: 50, boxSizing: 'border-box' }, // POS
-    c5: { left: 180, width: 40, minWidth: 40, maxWidth: 40, boxSizing: 'border-box' }, // NP
-    c6: { left: 220, width: 180, minWidth: 180, maxWidth: 180, boxSizing: 'border-box' }, // NAMA
+    c1: { left: 0, width: 40, minWidth: 40, maxWidth: 40, boxSizing: 'border-box' },   
+    c2: { left: 40, width: 40, minWidth: 40, maxWidth: 40, boxSizing: 'border-box' },  
+    c3: { left: 80, width: 50, minWidth: 50, maxWidth: 50, boxSizing: 'border-box' },  
+    c4: { left: 130, width: 50, minWidth: 50, maxWidth: 50, boxSizing: 'border-box' }, 
+    c5: { left: 180, width: 40, minWidth: 40, maxWidth: 40, boxSizing: 'border-box' }, 
+    c6: { left: 220, width: 180, minWidth: 180, maxWidth: 180, boxSizing: 'border-box' }, 
 };
 
 const checkIsDistanceGroup = (colId) => ['hir_18_24_kmh', 'sprint_distance', 'total_18kmh'].includes(colId);
@@ -22,6 +22,12 @@ const TrainingPlayerRow = ({ player, visibleIdx, isAbsent, actions }) => {
         : 'hover:bg-zinc-50/80 dark:hover:bg-zinc-900/40'
     }`;
 
+    // --- KUNCI PERBAIKAN: BACA CHECKBOX DENGAN AMAN ---
+    const isSelected = player.selected ?? player.metrics?.selected ?? true;
+    const isSelectedHR4 = player.selected_hr4 ?? player.metrics?.selected_hr4 ?? true;
+    const isSelectedHR5 = player.selected_hr5 ?? player.metrics?.selected_hr5 ?? true;
+    const isSelectedPL = player.selected_pl ?? player.metrics?.selected_pl ?? true;
+
     return (
         <tr 
             draggable={true} 
@@ -31,17 +37,13 @@ const TrainingPlayerRow = ({ player, visibleIdx, isAbsent, actions }) => {
             onDragOver={(e) => e.preventDefault()} 
             className="group"
         >
-            {/* 1. NO - Dinamis berdasarkan urutan tampilan */}
             <td style={STICKY_COLS.c1} className={`p-1.5 font-bold text-[11px] text-zinc-400 dark:text-zinc-600 border-r border-zinc-100 dark:border-zinc-800/50 sticky z-20 bg-clip-padding text-center ${rowStyle}`}>
                 {visibleIdx + 1}
             </td>
             
-            
-            
-            {/* 3. ACTIONS (Geser & Set Latihan/Absen) */}
             <td style={STICKY_COLS.c2} className={`p-1 sticky z-20 border-r border-zinc-100 dark:border-zinc-800/50 bg-clip-padding ${rowStyle}`}>
                 <div className="flex items-center justify-center gap-1.5 w-full">
-                    <div className="cursor-grab active:cursor-grabbing hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors" title="Geser (Hanya Posisi Sama)">
+                    <div className="cursor-grab active:cursor-grabbing hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors" title="Geser">
                         <GripVertical size={14} className="text-zinc-300 dark:text-zinc-600" />
                     </div>
                     <button type="button" onClick={() => actions.togglePlayStatus(player.originalIndex)} className="outline-none hover:scale-110 transition-transform" title={isAbsent ? "Set Latihan" : "Set Absen"}>
@@ -50,26 +52,23 @@ const TrainingPlayerRow = ({ player, visibleIdx, isAbsent, actions }) => {
                 </div>
             </td>
 
-            {/* 2. CHECKBOX */}
+            {/* CHECKBOX UTAMA (DISTANCE) */}
             <td style={STICKY_COLS.c3} className={`p-1.5 sticky z-20 text-center border-r border-zinc-100 dark:border-zinc-800/50 bg-clip-padding ${rowStyle}`}>
-                <button type="button" onClick={() => actions.togglePlayerSelection(player.originalIndex, 'selected')} className={`${player.selected !== false ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-300 dark:text-zinc-700'} hover:scale-110 transition-transform outline-none`}>
-                    {player.selected !== false ? <CheckSquare size={14} strokeWidth={2.5} /> : <Square size={14} strokeWidth={2.5} />}
+                <button type="button" onClick={() => actions.togglePlayerSelection(player.originalIndex, 'selected')} className={`${isSelected ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-300 dark:text-zinc-700'} hover:scale-110 transition-transform outline-none`}>
+                    {isSelected ? <CheckSquare size={14} strokeWidth={2.5} /> : <Square size={14} strokeWidth={2.5} />}
                 </button>
             </td>
             
-            {/* 4. POSISI */}
             <td style={STICKY_COLS.c4} className={`p-1.5 sticky z-20 border-r border-zinc-100 dark:border-zinc-800/50 bg-clip-padding text-center ${rowStyle}`}>
                 <span className={`px-1.5 py-0.5 rounded border text-[9px] font-black tracking-wider ${isAbsent ? 'border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 bg-zinc-50 dark:bg-zinc-900' : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 bg-zinc-100/50 dark:bg-zinc-800'}`}>
                     {player.position}
                 </span>
             </td>
             
-            {/* 5. NOMOR PUNGGUNG (NP) */}
             <td style={STICKY_COLS.c5} className={`p-1.5 font-mono font-bold text-[10px] text-zinc-500 border-r border-zinc-100 dark:border-zinc-800/50 sticky z-20 bg-clip-padding text-center ${rowStyle}`}>
                 {String(player.position_number).padStart(2, '0')}
             </td>
             
-            {/* 6. NAMA PEMAIN */}
             <td style={STICKY_COLS.c6} className={`p-1.5 font-bold text-[11px] ${isAbsent ? 'text-zinc-500 dark:text-zinc-600' : 'text-zinc-900 dark:text-zinc-100'} sticky z-20 shadow-[4px_0_12px_rgba(0,0,0,0.04)] bg-clip-padding border-r border-zinc-200 dark:border-zinc-800 ${rowStyle}`}>
                 <div style={{ width: '164px' }} className="flex items-center justify-between gap-2 group/name overflow-hidden">
                     <span className="truncate flex-1" title={player.name}>{player.name}</span>
@@ -95,9 +94,10 @@ const TrainingPlayerRow = ({ player, visibleIdx, isAbsent, actions }) => {
                     <React.Fragment key={col.id}>
                         <td className={`p-1 border-l border-zinc-100 dark:border-zinc-800/60 relative transition-colors ${cellBgClass}`}>
                             <div className="flex items-center justify-center gap-1 w-full">
+                                {/* CHECKBOX SPESIFIK */}
                                 {(isHR4 || isHR5 || isPL) && (
-                                    <button type="button" onClick={() => actions.togglePlayerSelection(player.originalIndex, isHR4 ? 'selected_hr4' : isHR5 ? 'selected_hr5' : 'selected_pl')} className={`${player[isHR4 ? 'selected_hr4' : isHR5 ? 'selected_hr5' : 'selected_pl'] !== false ? 'text-zinc-900 dark:text-zinc-300' : 'text-zinc-300 dark:text-zinc-700 hover:text-zinc-500'} outline-none shrink-0 transition-colors`}>
-                                        {player[isHR4 ? 'selected_hr4' : isHR5 ? 'selected_hr5' : 'selected_pl'] !== false ? <CheckSquare size={12} strokeWidth={2.5}/> : <Square size={12} strokeWidth={2.5}/>}
+                                    <button type="button" onClick={() => actions.togglePlayerSelection(player.originalIndex, isHR4 ? 'selected_hr4' : isHR5 ? 'selected_hr5' : 'selected_pl')} className={`${(isHR4 ? isSelectedHR4 : isHR5 ? isSelectedHR5 : isSelectedPL) ? 'text-zinc-900 dark:text-zinc-300' : 'text-zinc-300 dark:text-zinc-700 hover:text-zinc-500'} outline-none shrink-0 transition-colors`}>
+                                        {(isHR4 ? isSelectedHR4 : isHR5 ? isSelectedHR5 : isSelectedPL) ? <CheckSquare size={12} strokeWidth={2.5}/> : <Square size={12} strokeWidth={2.5}/>}
                                     </button>
                                 )}
                                 
@@ -144,7 +144,7 @@ const TrainingPlayerRow = ({ player, visibleIdx, isAbsent, actions }) => {
 const areEqual = (prevProps, nextProps) => {
     return prevProps.player === nextProps.player && 
            prevProps.isAbsent === nextProps.isAbsent &&
-           prevProps.visibleIdx === nextProps.visibleIdx; // Jika urutan geser, akan update otomatis
+           prevProps.visibleIdx === nextProps.visibleIdx; 
 };
 
 export default React.memo(TrainingPlayerRow, areEqual);

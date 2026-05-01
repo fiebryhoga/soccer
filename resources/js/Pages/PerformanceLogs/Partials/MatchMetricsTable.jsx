@@ -56,10 +56,19 @@ export default function MatchMetricsTable({ data, setData, getAutoCalculatedValu
         setData('players_data', newData);
     };
 
-    const togglePlayerSelection = (originalIndex, type = 'selected') => {
-        const newData = [...data.players_data];
-        newData[originalIndex][type] = !newData[originalIndex][type];
-        newData[originalIndex].metrics[type] = newData[originalIndex][type];
+    const togglePlayerSelection = (index, field) => {
+        let newData = [...data.players_data];
+        const currentVal = newData[index][field] ?? newData[index].metrics?.[field] ?? true;
+        const newVal = !currentVal;
+    
+        newData[index] = {
+            ...newData[index],
+            [field]: newVal, // Update Root (Untuk UI)
+            metrics: {
+                ...newData[index].metrics,
+                [field]: newVal // Update Metrics (Untuk dikirim ke Database!)
+            }
+        };
         setData('players_data', newData);
     };
 

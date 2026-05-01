@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\ChartTemplate;
 use App\Models\PerformanceLog;
 use App\Models\Club;
 use App\Models\Player;
@@ -12,13 +13,11 @@ use Carbon\CarbonPeriod;
 
 class PerformanceAnalysisController extends Controller
 {
-    
     public function strainMonotony(Request $request)
     {
         $club = Club::first();
         if (!$club) return redirect()->back()->with('error', 'Klub belum diatur.');
 
-        // Default: 5 Minggu terakhir (Minggu ini mundur 4 minggu)
         $endDateParam = $request->input('end_date', now()->toDateString());
         $startDateParam = $request->input('start_date', Carbon::parse($endDateParam)->subWeeks(4)->startOfWeek(Carbon::MONDAY)->toDateString());
 
@@ -34,16 +33,14 @@ class PerformanceAnalysisController extends Controller
 
         $columnsToAverage = [
             'total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 
-            'total_18kmh', 'accels', 'decels', 'hr_band_4_dist', 'hr_band_4_dur', // <-- Tambahkan
-            'hr_band_5_dist', 'hr_band_5_dur', // <-- Tambahkan
-            'max_velocity', 'player_load'
+            'total_18kmh', 'accels', 'decels', 'hr_band_4_dist', 'hr_band_4_dur', 
+            'hr_band_5_dist', 'hr_band_5_dur', 'max_velocity', 'player_load',
         ];
 
         $weeksData = [];
         $currentStart = $startOfWeek->copy();
         $weekNumber = 1;
 
-        // Looping pemotongan per Minggu
         while ($currentStart->lte($endOfWeek)) {
             $currentEnd = $currentStart->copy()->endOfWeek(Carbon::SUNDAY);
             $period = CarbonPeriod::create($currentStart, $currentEnd);
@@ -55,32 +52,27 @@ class PerformanceAnalysisController extends Controller
                 
                 if (!$log || $log->type === 'off') {
                     $daysData[] = [
-                        'date' => $dateStr,
-                        'day_name' => $dateObj->translatedFormat('l'),
-                        'title' => 'off',
-                        'type' => 'off',
-                        'averages' => []
+                        'date' => $dateStr, 'day_name' => $dateObj->translatedFormat('l'),
+                        'title' => 'off', 'type' => 'off', 'averages' => []
                     ];
                     continue;
                 }
 
                 $benchmark = $log->benchmark ? $log->benchmark->toArray() : null;
                 $metrics = PlayerMetric::where('performance_log_id', $log->id)->get();
-                $teamAverage = $this->calculateTeamAverageForSession($players, $metrics, $benchmark, $columnsToAverage);
+                // PERBAIKAN: Kirim $log->type
+                $teamAverage = $this->calculateTeamAverageForSession($log->type, $players, $metrics, $benchmark, $columnsToAverage);
 
                 $daysData[] = [
-                    'date' => $dateStr,
-                    'day_name' => $dateObj->translatedFormat('l'),
+                    'date' => $dateStr, 'day_name' => $dateObj->translatedFormat('l'),
                     'title' => $log->title ?: strtoupper($log->type),
-                    'type' => $log->type,
-                    'averages' => $teamAverage
+                    'type' => $log->type, 'averages' => $teamAverage
                 ];
             }
 
             $weeksData[] = [
                 'week_label' => "W" . $weekNumber . " (" . $currentStart->translatedFormat('d M') . " - " . $currentEnd->translatedFormat('d M') . ")",
-                'start_date' => $currentStart->toDateString(),
-                'end_date' => $currentEnd->toDateString(),
+                'start_date' => $currentStart->toDateString(), 'end_date' => $currentEnd->toDateString(),
                 'days' => $daysData
             ];
 
@@ -89,9 +81,7 @@ class PerformanceAnalysisController extends Controller
         }
 
         return inertia('TeamAnalysis/StrainMonotony', [
-            'weeksData' => $weeksData,
-            'startDate' => $startOfWeek->toDateString(),
-            'endDate' => $endOfWeek->toDateString(),
+            'weeksData' => $weeksData, 'startDate' => $startOfWeek->toDateString(), 'endDate' => $endOfWeek->toDateString(),
         ]);
     }
 
@@ -100,29 +90,17 @@ class PerformanceAnalysisController extends Controller
         $club = Club::first();
         if (!$club) return redirect()->back()->with('error', 'Klub belum diatur.');
 
-        // Filter tampilan rentang grafik
         $endDateParam = $request->input('end_date', now()->toDateString());
         $startDateParam = $request->input('start_date', Carbon::parse($endDateParam)->subDays(14)->toDateString());
 
-        // LOGIKA BARU YANG SUDAH DIPERBAIKI: 
-        // Cari tanggal PALING AWAL, TAPI abaikan yang statusnya 'off'
-        $firstLog = PerformanceLog::where('club_id', $club->id)
-            ->where('type', '!=', 'off') // <-- INI KUNCI PERBAIKANNYA
-            ->orderBy('date', 'asc')
-            ->first();
+        $firstLog = PerformanceLog::where('club_id', $club->id)->where('type', '!=', 'off')->orderBy('date', 'asc')->first();
         
         $fetchStart = $firstLog ? Carbon::parse($firstLog->date) : Carbon::parse($startDateParam);
+        if ($fetchStart->gt(Carbon::parse($endDateParam))) $fetchStart = Carbon::parse($startDateParam);
         
-        // Jaga-jaga jika filter end_date lebih lampau dari first log
-        if ($fetchStart->gt(Carbon::parse($endDateParam))) {
-            $fetchStart = Carbon::parse($startDateParam);
-        }
         $fetchEnd = Carbon::parse($endDateParam);
 
-        $logs = PerformanceLog::with('benchmark')
-            ->where('club_id', $club->id)
-            ->whereBetween('date', [$fetchStart->toDateString(), $fetchEnd->toDateString()])
-            ->get()->keyBy('date');
+        $logs = PerformanceLog::with('benchmark')->where('club_id', $club->id)->whereBetween('date', [$fetchStart->toDateString(), $fetchEnd->toDateString()])->get()->keyBy('date');
 
         $players = Player::all();
         $period = CarbonPeriod::create($fetchStart, $fetchEnd);
@@ -140,219 +118,201 @@ class PerformanceAnalysisController extends Controller
             $log = $logs->get($dateStr);
             
             if (!$log || $log->type === 'off') {
-                $dailyData[] = [
-                    'date' => $dateStr,
-                    'day_name' => $dateObj->translatedFormat('l, d M'),
-                    'title' => 'off',
-                    'type' => 'off',
-                    'averages' => []
-                ];
+                $dailyData[] = ['date' => $dateStr, 'day_name' => $dateObj->translatedFormat('l, d M'), 'title' => 'off', 'type' => 'off', 'averages' => []];
                 continue;
             }
 
             $benchmark = $log->benchmark ? $log->benchmark->toArray() : null;
             $metrics = PlayerMetric::where('performance_log_id', $log->id)->get();
-            $teamAverage = $this->calculateTeamAverageForSession($players, $metrics, $benchmark, $columnsToAverage);
+            // PERBAIKAN: Kirim $log->type
+            $teamAverage = $this->calculateTeamAverageForSession($log->type, $players, $metrics, $benchmark, $columnsToAverage);
 
             $dailyData[] = [
-                'date' => $dateStr,
-                'day_name' => $dateObj->translatedFormat('l, d M'),
-                'title' => $log->title ?: strtoupper($log->type),
-                'type' => $log->type,
+                'date' => $dateStr, 'day_name' => $dateObj->translatedFormat('l, d M'),
+                'title' => $log->title ?: strtoupper($log->type), 'type' => $log->type,
                 'averages' => $teamAverage
             ];
         }
 
         return inertia('TeamAnalysis/ACWR', [
-            'historicalData' => $dailyData,
-            'startDate' => $startDateParam,
-            'endDate' => $endDateParam,
+            'historicalData' => $dailyData, 'startDate' => $startDateParam, 'endDate' => $endDateParam,
         ]);
     }
 
     public function comparison(Request $request)
     {
         $club = Club::first();
-        if (!$club) return redirect()->back()->with('error', 'Klub belum diatur.');
-
-        $sessionIds = $request->input('session_ids', []); 
-        $tags = $request->input('tags', []); 
+        $sessionIds = $request->input('session_ids', []);
+        $tags = $request->input('tags', []);
 
         $query = PerformanceLog::with('benchmark')->where('club_id', $club->id)->where('type', '!=', 'off');
 
-        if (!empty($sessionIds)) {
-            $query->whereIn('id', $sessionIds);
-        } elseif (!empty($tags)) {
-            $query->whereIn('tag', $tags);
-        } else {
-            $query->orderBy('date', 'desc')->limit(3);
-        }
+        if (!empty($sessionIds)) $query->whereIn('id', $sessionIds);
+        elseif (!empty($tags)) $query->whereIn('tag', $tags);
+        else $query->orderBy('date', 'desc')->limit(3);
 
         $logs = $query->orderBy('date', 'asc')->get();
         $players = Player::all();
 
+        $comparisonData = $logs->map(function($log) use ($players) {
+            $metrics = PlayerMetric::where('performance_log_id', $log->id)->get();
+            return [
+                'id' => $log->id,
+                'title' => $log->title,
+                'date' => $log->date,
+                'tag' => $log->tag,
+                'averages' => $this->calculateTeamAverageForSession($log->type, $players, $metrics, $log->benchmark, [
+                    'total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 
+                    'total_18kmh', 'accels', 'decels', 'hr_band_4_dist', 'hr_band_4_dur',
+                    'hr_band_5_dist', 'hr_band_5_dur', 'max_velocity', 'player_load'
+                ])
+            ];
+        });
+
         $allSessions = PerformanceLog::where('club_id', $club->id)->where('type', '!=', 'off')->orderBy('date', 'desc')->get(['id', 'title', 'date', 'tag']);
         $availableTags = PerformanceLog::whereNotNull('tag')->distinct()->pluck('tag');
 
-        // LOGIKA BARU: Cek jumlah sesi yang ditemukan
-        if ($logs->count() === 1) {
-            // ---------------------------------------------------------
-            // SINGLE SESSION MODE (Analysis)
-            // ---------------------------------------------------------
-            $singleLog = $logs->first();
-            $metrics = PlayerMetric::where('performance_log_id', $singleLog->id)->get();
-            
-            $playerMetricsData = [];
-            foreach ($players as $player) {
-                $playerMetric = $metrics->where('player_id', $player->id)->first();
-                if ($playerMetric) {
-                     $rawMetrics = is_array($playerMetric->metrics) ? $playerMetric->metrics : json_decode($playerMetric->metrics, true);
-                     $playerMetricsData[] = [
-                         'player' => [
-                             'id' => $player->id,
-                             'name' => $player->name,
-                             'position' => $player->position,
-                             'position_number' => $player->position_number,
-                         ],
-                         'metrics' => $rawMetrics
-                     ];
-                }
-            }
+        // AMBIL TEMPLATE DARI DATABASE
+        $chartTemplates = ChartTemplate::where('club_id', $club->id)->get();
 
-            $teamAverage = $this->calculateTeamAverageForSession($players, $metrics, $singleLog->benchmark, [
-                 'total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 
-                 'total_18kmh', 'accels', 'decels', 'hr_band_4_dist', 'hr_band_4_dur', 
-                 'hr_band_5_dist', 'hr_band_5_dur', 'max_velocity', 'player_load'
-            ]);
-
-            // KEMBALI KE FILE COMPARISON.JSX
-            return inertia('TeamAnalysis/Comparison', [ 
-                'isSingleSession' => true,
-                'sessionData' => [
-                    'id' => $singleLog->id,
-                    'title' => $singleLog->title ?: strtoupper($singleLog->type),
-                    'date' => $singleLog->date,
-                    'tag' => $singleLog->tag,
-                    'teamAverages' => $teamAverage,
-                    'playerMetrics' => $playerMetricsData
-                ],
-                'allSessions' => $allSessions,
-                'availableTags' => $availableTags,
-                'filters' => $request->only(['session_ids', 'tags'])
-            ]);
-
-        } else {
-            // ---------------------------------------------------------
-            // MULTI-SESSION MODE (Comparison)
-            // ---------------------------------------------------------
-            $comparisonData = $logs->map(function($log) use ($players) {
-                $metrics = PlayerMetric::where('performance_log_id', $log->id)->get();
-                
-                return [
-                    'id' => $log->id,
-                    'title' => $log->title ?: strtoupper($log->type),
-                    'date' => $log->date,
-                    'tag' => $log->tag,
-                    'averages' => $this->calculateTeamAverageForSession($players, $metrics, $log->benchmark, [
-                        'total_distance', 
-                        'dist_per_min', 
-                        'hir_18_24_kmh', 
-                        'sprint_distance', 
-                        'total_18kmh', 
-                        'accels', 
-                        'decels', 
-                        'hr_band_4_dist', 
-                        'hr_band_4_dur',
-                        'hr_band_5_dist', 
-                        'hr_band_5_dur',
-                        'max_velocity', 
-                        'player_load'
-                    ])
-                ];
-            });
-
-            // KEMBALI KE FILE COMPARISON.JSX JUGA
-            return inertia('TeamAnalysis/Comparison', [
-                'isSingleSession' => false,
-                'comparisonData' => $comparisonData,
-                'allSessions' => $allSessions,
-                'availableTags' => $availableTags,
-                'filters' => $request->only(['session_ids', 'tags'])
-            ]);
-        }
+        return inertia('TeamAnalysis/Comparison', [
+            'comparisonData' => $comparisonData, 
+            'allSessions' => $allSessions, 
+            'availableTags' => $availableTags,
+            'chartTemplates' => $chartTemplates // <-- KIRIM KE REACT
+        ]);
     }
 
-    private function calculateTeamAverageForSession($players, $metrics, $benchmark, $columnsToAverage)
-{
-    $teamAverage = [];
-    $metricsByPlayer = $metrics->keyBy('player_id');
+    // FUNGSI BARU: Simpan Template ke DB
+    public function storeChartTemplate(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'config' => 'required|array',
+        ]);
 
-    foreach ($columnsToAverage as $col) {
-        $sumVal = 0; $countVal = 0;
-        $sumSec = 0; $countSec = 0; // Untuk hitung waktu
-        $sumPct = 0; $countPct = 0;
+        ChartTemplate::create([
+            'club_id' => Club::first()->id,
+            'name' => $request->name,
+            'config' => $request->config,
+        ]);
 
-        $isDuration = str_contains($col, '_dur');
+        return redirect()->back()->with('success', 'Template grafik berhasil disimpan!');
+    }
 
-        foreach ($players as $player) {
-            $playerMetric = $metricsByPlayer->get($player->id);
-            if (!$playerMetric) continue;
+    public function updateChartTemplate(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'config' => 'required|array',
+        ]);
 
-            $rawMetrics = is_array($playerMetric->metrics) ? $playerMetric->metrics : json_decode($playerMetric->metrics, true);
-            
-            // Logika filter centang (tetap sama)
-            $isValid = $this->checkSelectionStatus($col, $rawMetrics);
+        $template = \App\Models\ChartTemplate::findOrFail($id);
+        $template->update([
+            'name' => $request->name,
+            'config' => $request->config,
+        ]);
 
-            if ($isValid) {
-                $val = $rawMetrics[$col] ?? null;
+        return redirect()->back()->with('success', 'Template grafik berhasil diperbarui!');
+    }
 
-                if ($isDuration) {
-                    $seconds = $this->timeToSeconds($val);
-                    if ($seconds !== null) {
-                        $sumSec += $seconds;
-                        $countSec++;
-                    }
-                } else {
-                    $historicalHighest = is_array($player->highest_metrics) ? $player->highest_metrics : json_decode($player->highest_metrics, true) ?? [];
-                    $calculatedVal = $this->getAutoCalculatedValue($rawMetrics, $col, $historicalHighest);
-                    
-                    if ($calculatedVal !== '' && $calculatedVal !== '-' && is_numeric($calculatedVal)) {
-                        $sumVal += floatval($calculatedVal);
-                        $countVal++;
+    // FUNGSI BARU: Hapus Template dari DB
+    public function destroyChartTemplate($id)
+    {
+        $template = ChartTemplate::findOrFail($id);
+        $template->delete();
 
-                        $pct = $this->calculatePercentage($col, $calculatedVal, $player->position, $benchmark, $historicalHighest);
-                        if (is_numeric($pct)) {
-                            $sumPct += floatval($pct);
-                            $countPct++;
+        return redirect()->back()->with('success', 'Template berhasil dihapus.');
+    }
+
+    // =========================================================================
+    // KUNCI PERBAIKAN LOGIKA: SAMA PERSIS DENGAN REPORT EXCEL & FRONTEND REACT
+    // =========================================================================
+    private function calculateTeamAverageForSession($logType, $players, $metrics, $benchmark, $columnsToAverage)
+    {
+        $teamAverage = [];
+        $metricsByPlayer = $metrics->keyBy('player_id');
+
+        $distanceGroup = ['total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh'];
+        // Kolom yang dibagi 10 jika Match
+        $divideBy10Cols = array_merge($distanceGroup, ['player_load']);
+
+        foreach ($columnsToAverage as $col) {
+            $sumVal = 0; $countVal = 0;
+            $sumSec = 0; $countSec = 0; 
+            $sumPct = 0; $countPct = 0;
+
+            $isDuration = str_contains($col, '_dur');
+
+            foreach ($players as $player) {
+                $playerMetric = $metricsByPlayer->get($player->id);
+                if (!$playerMetric) continue;
+
+                $rawMetrics = is_array($playerMetric->metrics) ? $playerMetric->metrics : json_decode($playerMetric->metrics, true) ?? [];
+                
+                // Pastikan checkbox terpenuhi
+                $isValid = $this->checkSelectionStatus($col, $rawMetrics);
+
+                if ($isValid) {
+                    $val = $rawMetrics[$col] ?? null;
+
+                    if ($isDuration) {
+                        $seconds = $this->timeToSeconds($val);
+                        if ($seconds !== null) {
+                            $sumSec += $seconds;
+                            $countSec++;
+                        }
+                    } else {
+                        $historicalHighest = is_array($player->highest_metrics) ? $player->highest_metrics : json_decode($player->highest_metrics, true) ?? [];
+                        $calculatedVal = $this->getAutoCalculatedValue($rawMetrics, $col, $historicalHighest);
+                        
+                        if ($calculatedVal !== '' && $calculatedVal !== '-' && is_numeric($calculatedVal)) {
+                            $sumVal += floatval($calculatedVal);
+                            $countVal++;
+
+                            $pct = $this->calculatePercentage($col, $calculatedVal, $player->position, $benchmark, $historicalHighest);
+                            if (is_numeric($pct)) {
+                                $sumPct += floatval($pct);
+                                $countPct++;
+                            }
                         }
                     }
                 }
             }
+
+            // LOGIKA MATCH (Dibagi 10)
+            if ($logType === 'match' && in_array($col, $divideBy10Cols)) {
+                $countVal = 10;
+                $countPct = 10;
+            }
+
+            // SIMPAN HASIL
+            if ($isDuration) {
+                if ($countSec > 0) {
+                    $teamAverage[$col] = $this->secondsToTime($sumSec / $countSec);
+                } else {
+                    $teamAverage[$col] = '00.00.00';
+                }
+            } else {
+                $avgVal = $countVal > 0 ? ($sumVal / $countVal) : 0;
+                $teamAverage[$col] = floor($avgVal) == $avgVal ? (string)$avgVal : number_format($avgVal, 1, '.', '');
+                
+                $avgPct = $countPct > 0 ? ($sumPct / $countPct) : 0;
+                $teamAverage[$col . '_percent'] = number_format($avgPct, 1, '.', '');
+            }
         }
 
-        // Simpan hasil rata-rata
-        if ($isDuration) {
-            $teamAverage[$col] = $countSec > 0 ? $this->secondsToTime($sumSec / $countSec) : '00.00.00';
-        } else {
-            $avgVal = $countVal > 0 ? ($sumVal / $countVal) : 0;
-            $teamAverage[$col] = floor($avgVal) == $avgVal ? (string)$avgVal : number_format($avgVal, 1, '.', '');
-            
-            $avgPct = $countPct > 0 ? ($sumPct / $countPct) : 0;
-            $teamAverage[$col . '_percent'] = number_format($avgPct, 1, '.', '');
-        }
+        return $teamAverage;
     }
 
-    return $teamAverage;
-}
-
-    // Helper untuk cek centang agar kode lebih bersih
     private function checkSelectionStatus($col, $rawMetrics) {
         $distanceGroup = ['total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh'];
         if (in_array($col, $distanceGroup)) return $rawMetrics['selected'] ?? true;
         if (str_contains($col, 'hr_band_4')) return $rawMetrics['selected_hr4'] ?? true;
         if (str_contains($col, 'hr_band_5')) return $rawMetrics['selected_hr5'] ?? true;
         if ($col === 'player_load') return $rawMetrics['selected_pl'] ?? true;
-        return true; // Default untuk Accel/Decel/Vel
+        // Metrik Max Vel, Highest Vel, Accels, Decels -> Selalu true (tidak butuh checkbox)
+        return true; 
     }
 
     private function getAutoCalculatedValue($metrics, $colId, $playerHighest)

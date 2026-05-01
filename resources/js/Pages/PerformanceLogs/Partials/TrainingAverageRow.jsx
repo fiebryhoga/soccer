@@ -10,9 +10,32 @@ const STICKY_COLS = {
 
 const checkIsDistanceGroup = (colId) => ['hir_18_24_kmh', 'sprint_distance', 'total_18kmh'].includes(colId);
 
-const calculateLocalAverage = (playersGroup, colId, getAutoCalculatedValue) => {
+// FUNGSI PINTAR UNTUK MENGAMBIL TARGET FILTER
+const getTargetPlayers = (players, colId, isTeamAverage) => {
+    // Jika Average Posisi, pakai semua data pemain di posisi tsb (abaikan checkbox)
+    if (!isTeamAverage) return players;
+
+    const distanceGroup = ['total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh'];
+    const hr4Group = ['hr_band_4_dist', 'hr_band_4_dur'];
+    const hr5Group = ['hr_band_5_dist', 'hr_band_5_dur'];
+    const plGroup = ['player_load'];
+
+    if (hr4Group.includes(colId)) return players.filter(p => (p.selected_hr4 ?? p.metrics?.selected_hr4) !== false);
+    if (hr5Group.includes(colId)) return players.filter(p => (p.selected_hr5 ?? p.metrics?.selected_hr5) !== false);
+    if (plGroup.includes(colId)) return players.filter(p => (p.selected_pl ?? p.metrics?.selected_pl) !== false);
+    if (distanceGroup.includes(colId)) return players.filter(p => (p.selected ?? p.metrics?.selected) !== false);
+
+    // Untuk kolom lain seperti Durasi, Max Vel, highest_velocity dll -> Abaikan checkbox, hitung semua
+    return players;
+};
+
+const calculateLocalAverage = (playersGroup, colId, getAutoCalculatedValue, isTeamAverage) => {
     let sum = 0; let count = 0; let isTime = false;
-    playersGroup.forEach(p => {
+    
+    // Ambil pemain yang lolos filter checkbox
+    const targetPlayers = getTargetPlayers(playersGroup, colId, isTeamAverage);
+
+    targetPlayers.forEach(p => {
         const val = getAutoCalculatedValue(p, colId);
         if (val === '-' || val === '' || val == null) return;
         
@@ -41,11 +64,7 @@ const calculateLocalAverage = (playersGroup, colId, getAutoCalculatedValue) => {
     return Number.isInteger(avg) ? avg.toString() : avg.toFixed(1);
 };
 
-// ==========================================
-// KOMPONEN RATA-RATA (DI-MEMOIZATION & PREMIUM MONOCHROME)
-// ==========================================
 const TrainingAverageRow = ({ title, groupPlayers, isTeamAverage, actions }) => {
-    // Styling Monochrome Premium (Menghapus total warna emerald)
     const bgClass = isTeamAverage ? 'bg-zinc-50 dark:bg-[#111113] bg-clip-padding' : 'bg-zinc-100 dark:bg-zinc-900 bg-clip-padding';
     const borderClass = 'border-zinc-200 dark:border-zinc-800';
     const textClass = isTeamAverage ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-600 dark:text-zinc-300';
@@ -58,27 +77,16 @@ const TrainingAverageRow = ({ title, groupPlayers, isTeamAverage, actions }) => 
             </td>
             
             {FIXED_EXCEL_COLUMNS.map(col => {
-                const distanceGroup = ['total_distance', 'dist_per_min', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh'];
-                const hr4Group = ['hr_band_4_dist', 'hr_band_4_dur'];
-                const hr5Group = ['hr_band_5_dist', 'hr_band_5_dur'];
-                const plGroup = ['player_load'];
-
-                let targetPlayers = groupPlayers;
-                
-                // REVISI LOGIKA: Filter Checkbox HANYA berlaku untuk Team Average
-                if (isTeamAverage) {
-                    if (distanceGroup.includes(col.id)) targetPlayers = groupPlayers.filter(p => p.selected !== false);
-                    else if (hr4Group.includes(col.id)) targetPlayers = groupPlayers.filter(p => p.selected_hr4 !== false);
-                    else if (hr5Group.includes(col.id)) targetPlayers = groupPlayers.filter(p => p.selected_hr5 !== false);
-                    else if (plGroup.includes(col.id)) targetPlayers = groupPlayers.filter(p => p.selected_pl !== false);
-                }
-
-                const avgValue = calculateLocalAverage(targetPlayers, col.id, actions.getAutoCalculatedValue);
+                // Kalkulasi Nilai Average
+                const avgValue = calculateLocalAverage(groupPlayers, col.id, actions.getAutoCalculatedValue, isTeamAverage);
                 const hasValue = avgValue !== '-';
                 
+                // Kalkulasi Persentase (Patuhi filter yang sama)
                 let avgPercent = 0;
                 if (hasValue && col.hasPercent) {
                     let sumPct = 0; let countPct = 0;
+                    const targetPlayers = getTargetPlayers(groupPlayers, col.id, isTeamAverage);
+                    
                     targetPlayers.forEach(p => {
                         const rawVal = actions.getAutoCalculatedValue(p, col.id);
                         if (rawVal !== '' && !isNaN(parseFloat(rawVal))) {
@@ -93,7 +101,6 @@ const TrainingAverageRow = ({ title, groupPlayers, isTeamAverage, actions }) => 
                 
                 return (
                     <React.Fragment key={`avg-${col.id}`}>
-                        {/* Ukuran di-press ke compact (p-1.5, text-[11px]) */}
                         <td className={`p-1.5 font-bold text-center border-l text-[11px] tabular-nums ${isTeamAverage ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-600 dark:text-zinc-300'} ${borderClass} ${isDist ? (isTeamAverage ? 'bg-zinc-100/50 dark:bg-zinc-800/30' : 'bg-zinc-200/50 dark:bg-zinc-800/60') : ''}`}>
                             {avgValue}
                         </td>
@@ -117,20 +124,18 @@ const TrainingAverageRow = ({ title, groupPlayers, isTeamAverage, actions }) => 
     );
 };
 
-// OPTIMASI LEVEL DEWA
 const areEqual = (prev, next) => {
     if (prev.title !== next.title) return false;
     if (prev.groupPlayers.length !== next.groupPlayers.length) return false;
 
-    // Cek referensi objek metrics satu-satu untuk memastikan tak perlu kalkulasi ulang
     for (let i = 0; i < prev.groupPlayers.length; i++) {
         if (prev.groupPlayers[i].metrics !== next.groupPlayers[i].metrics) return false;
         
-        // Cek juga centangnya (terutama untuk Team Average yang sensitif terhadap ini)
-        if (prev.groupPlayers[i].selected !== next.groupPlayers[i].selected ||
-            prev.groupPlayers[i].selected_hr4 !== next.groupPlayers[i].selected_hr4 ||
-            prev.groupPlayers[i].selected_hr5 !== next.groupPlayers[i].selected_hr5 ||
-            prev.groupPlayers[i].selected_pl !== next.groupPlayers[i].selected_pl) {
+        // Cek property Root / Metrics JSON-nya agar Memoization tahu saat diganti
+        if ((prev.groupPlayers[i].selected ?? prev.groupPlayers[i].metrics?.selected) !== (next.groupPlayers[i].selected ?? next.groupPlayers[i].metrics?.selected) ||
+            (prev.groupPlayers[i].selected_hr4 ?? prev.groupPlayers[i].metrics?.selected_hr4) !== (next.groupPlayers[i].selected_hr4 ?? next.groupPlayers[i].metrics?.selected_hr4) ||
+            (prev.groupPlayers[i].selected_hr5 ?? prev.groupPlayers[i].metrics?.selected_hr5) !== (next.groupPlayers[i].selected_hr5 ?? next.groupPlayers[i].metrics?.selected_hr5) ||
+            (prev.groupPlayers[i].selected_pl ?? prev.groupPlayers[i].metrics?.selected_pl) !== (next.groupPlayers[i].selected_pl ?? next.groupPlayers[i].metrics?.selected_pl)) {
             return false;
         }
     }

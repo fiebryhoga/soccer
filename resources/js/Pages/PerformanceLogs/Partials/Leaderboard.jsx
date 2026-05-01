@@ -1,7 +1,7 @@
 // resources/js/Pages/PerformanceLogs/Partials/Leaderboard.jsx
 
 import React, { useMemo, useState } from 'react';
-import { Medal, Crown, ArrowUpDown } from 'lucide-react';
+import { Medal, Crown, ArrowUpDown, TrendingUp, TrendingDown } from 'lucide-react';
 import { FIXED_EXCEL_COLUMNS, MATCH_EXCEL_COLUMNS } from '@/Constants/metrics';
 
 export default function Leaderboard({ log, playersData }) {
@@ -56,27 +56,41 @@ export default function Leaderboard({ log, playersData }) {
         };
     }, [playersData, sortMetric, rankableColumns]);
 
+    // Komponen Pembantu untuk menampilkan Diff (Selisih dari Rata-rata)
+    const DiffIndicator = ({ val, avg }) => {
+        if (!val || val === 0 || !avg || avg === 0) return null;
+        const diff = (val - avg).toFixed(2);
+        const isPositive = diff > 0;
+        
+        return (
+            <div className={`flex items-center gap-1 text-[10px] font-bold ${isPositive ? 'text-primary' : 'text-muted-foreground'}`}>
+                {isPositive ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                {isPositive ? '+' : ''}{diff}
+            </div>
+        );
+    };
+
     return (
-        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-card text-card-foreground border border-border rounded-xl shadow-sm overflow-hidden transition-all">
             
-            {/* Header & Filter Leaderboard */}
-            <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* --- HEADER & FILTER --- */}
+            <div className="p-5 border-b border-border bg-muted/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h3 className="text-base font-black text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                        <Medal className="text-amber-500" size={20} /> 
-                        Player Ranking
+                    <h3 className="text-base font-black text-foreground flex items-center gap-2">
+                        <Medal className="text-primary" size={20} /> 
+                        Peringkat Skuad
                     </h3>
-                    <p className="text-xs text-zinc-500 mt-1 font-semibold">
-                        Rata-rata Tim untuk metrik ini: <span className="text-zinc-800 dark:text-zinc-200 font-bold">{teamAverage}</span>
+                    <p className="text-xs text-muted-foreground mt-1 font-semibold flex items-center gap-1.5">
+                        Rata-rata Tim: <span className="bg-background border border-border px-2 py-0.5 rounded text-foreground font-black">{teamAverage}</span>
                     </p>
                 </div>
 
-                <div className="flex items-center gap-2 w-full md:w-auto">
-                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">Urutkan Berdasarkan:</span>
+                <div className="flex flex-col md:flex-row md:items-center gap-2 w-full md:w-auto">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap">Filter Indikator</span>
                     <select 
                         value={sortMetric}
                         onChange={(e) => setSortMetric(e.target.value)}
-                        className="w-full md:w-64 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm font-bold px-3 py-2 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-500 outline-none cursor-pointer shadow-sm"
+                        className="w-full md:w-64 bg-background border border-border rounded-lg text-sm font-bold px-3 py-2.5 text-foreground focus:ring-2 focus:ring-ring outline-none cursor-pointer shadow-sm hover:bg-muted/50 transition-colors"
                     >
                         {rankableColumns.map(col => (
                             <option key={col.id} value={col.id}>
@@ -87,88 +101,105 @@ export default function Leaderboard({ log, playersData }) {
                 </div>
             </div>
 
-            {/* Top 3 Podium (Hanya tampil jika ada minimal 3 pemain) */}
+            {/* --- TOP 3 PODIUM --- */}
             {rankedPlayers.length >= 3 && (
-                <div className="grid grid-cols-3 gap-4 p-6 bg-gradient-to-b from-transparent to-zinc-50 dark:to-zinc-900/20 border-b border-zinc-200 dark:border-zinc-800">
+                <div className="grid grid-cols-3 gap-3 md:gap-6 p-6 bg-gradient-to-b from-muted/10 to-transparent border-b border-border">
                     
-                    {/* Peringkat 2 - Perak */}
+                    {/* Rank 2 - Perak */}
                     <div className="flex flex-col items-center justify-end mt-8">
-                        <div className="relative bg-white dark:bg-zinc-900 border-2 border-slate-300 dark:border-slate-600 w-full rounded-2xl p-4 text-center shadow-lg shadow-slate-200/50 dark:shadow-none">
-                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-200 text-slate-700 p-2 rounded-full border-2 border-white dark:border-zinc-900">
-                                <h4 className="text-sm font-black w-6 h-6 flex items-center justify-center">2</h4>
+                        <div className="relative bg-background border border-border w-full rounded-xl p-4 text-center shadow-sm">
+                            <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-muted text-muted-foreground p-1.5 rounded-full border-4 border-background">
+                                <span className="text-xs font-black w-5 h-5 flex items-center justify-center">2</span>
                             </div>
-                            <h4 className="mt-4 font-black text-sm text-zinc-800 dark:text-zinc-200 truncate" title={rankedPlayers[1].name}>{rankedPlayers[1].name}</h4>
-                            <span className="text-[10px] font-bold text-slate-500 px-2 py-0.5 bg-slate-100 dark:bg-zinc-800 rounded-md mt-1 inline-block">{rankedPlayers[1].position}</span>
-                            <div className="mt-3 text-lg font-black text-slate-600 dark:text-slate-400">{rankedPlayers[1].metricValue}</div>
+                            <h4 className="mt-3 font-black text-sm text-foreground truncate">{rankedPlayers[1].name}</h4>
+                            <span className="text-[9px] font-bold text-muted-foreground px-2 py-0.5 bg-muted rounded mt-1 inline-block uppercase tracking-wider">{rankedPlayers[1].position}</span>
+                            <div className="mt-3 flex flex-col items-center justify-center">
+                                <span className="text-xl font-black text-foreground">{rankedPlayers[1].metricValue}</span>
+                                <DiffIndicator val={rankedPlayers[1].metricValue} avg={teamAverage} />
+                            </div>
                         </div>
                     </div>
 
-                    {/* Peringkat 1 - Emas */}
+                    {/* Rank 1 - Emas */}
                     <div className="flex flex-col items-center justify-end z-10">
-                        <div className="relative bg-gradient-to-b from-amber-50 to-white dark:from-amber-900/20 dark:to-zinc-900 border-2 border-amber-400 w-full rounded-2xl p-5 text-center shadow-xl shadow-amber-200/50 dark:shadow-none transform -translate-y-4">
-                            <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-amber-400 text-amber-950 p-2 rounded-full border-4 border-white dark:border-zinc-900 shadow-md">
-                                <Crown size={20} strokeWidth={3} />
+                        <div className="relative bg-primary text-primary-foreground border border-border w-full rounded-xl p-5 text-center shadow-md transform -translate-y-4">
+                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-background text-primary p-2 rounded-full border-4 border-primary shadow-sm">
+                                <Crown size={16} strokeWidth={3} />
                             </div>
-                            <h4 className="mt-4 font-black text-base text-zinc-900 dark:text-zinc-100 truncate" title={rankedPlayers[0].name}>{rankedPlayers[0].name}</h4>
-                            <span className="text-[10px] font-bold text-amber-700 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/50 rounded-md mt-1 inline-block">{rankedPlayers[0].position}</span>
-                            <div className="mt-3 text-2xl font-black text-amber-600 dark:text-amber-500">{rankedPlayers[0].metricValue}</div>
+                            <h4 className="mt-3 font-black text-base truncate">{rankedPlayers[0].name}</h4>
+                            <span className="text-[10px] font-bold px-2 py-0.5 bg-background/20 rounded mt-1 inline-block uppercase tracking-wider">{rankedPlayers[0].position}</span>
+                            <div className="mt-3 flex flex-col items-center justify-center">
+                                <span className="text-3xl font-black">{rankedPlayers[0].metricValue}</span>
+                                <div className="opacity-80">
+                                   <DiffIndicator val={rankedPlayers[0].metricValue} avg={teamAverage} />
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Peringkat 3 - Perunggu */}
+                    {/* Rank 3 - Perunggu */}
                     <div className="flex flex-col items-center justify-end mt-12">
-                        <div className="relative bg-white dark:bg-zinc-900 border-2 border-orange-300 dark:border-orange-800 w-full rounded-2xl p-4 text-center shadow-lg shadow-orange-100/50 dark:shadow-none">
-                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-orange-200 text-orange-800 p-2 rounded-full border-2 border-white dark:border-zinc-900">
-                                <h4 className="text-sm font-black w-6 h-6 flex items-center justify-center">3</h4>
+                        <div className="relative bg-background border border-border w-full rounded-xl p-4 text-center shadow-sm">
+                            <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-muted/50 text-muted-foreground p-1.5 rounded-full border-4 border-background">
+                                <span className="text-xs font-black w-5 h-5 flex items-center justify-center">3</span>
                             </div>
-                            <h4 className="mt-4 font-black text-sm text-zinc-800 dark:text-zinc-200 truncate" title={rankedPlayers[2].name}>{rankedPlayers[2].name}</h4>
-                            <span className="text-[10px] font-bold text-orange-600 px-2 py-0.5 bg-orange-50 dark:bg-orange-900/30 rounded-md mt-1 inline-block">{rankedPlayers[2].position}</span>
-                            <div className="mt-3 text-lg font-black text-orange-600 dark:text-orange-500">{rankedPlayers[2].metricValue}</div>
+                            <h4 className="mt-3 font-black text-sm text-foreground truncate">{rankedPlayers[2].name}</h4>
+                            <span className="text-[9px] font-bold text-muted-foreground px-2 py-0.5 bg-muted rounded mt-1 inline-block uppercase tracking-wider">{rankedPlayers[2].position}</span>
+                            <div className="mt-3 flex flex-col items-center justify-center">
+                                <span className="text-lg font-black text-foreground">{rankedPlayers[2].metricValue}</span>
+                                <DiffIndicator val={rankedPlayers[2].metricValue} avg={teamAverage} />
+                            </div>
                         </div>
                     </div>
 
                 </div>
             )}
 
-            {/* Tabel Peringkat Lengkap */}
+            {/* --- TABEL PERINGKAT LENGKAP --- */}
             <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                     <thead>
-                        <tr className="bg-zinc-100 dark:bg-zinc-900/80 text-zinc-500 dark:text-zinc-400 text-[11px] uppercase tracking-widest">
-                            <th className="px-5 py-3 font-bold w-16 text-center">Rank</th>
-                            <th className="px-5 py-3 font-bold">Pemain</th>
-                            <th className="px-5 py-3 font-bold text-center">Posisi</th>
-                            <th className="px-5 py-3 font-bold text-right flex items-center justify-end gap-1">
+                        <tr className="bg-muted/30 border-b border-border text-muted-foreground text-[10px] uppercase tracking-widest">
+                            <th className="px-5 py-3.5 font-bold w-16 text-center">Rank</th>
+                            <th className="px-5 py-3.5 font-bold">Informasi Pemain</th>
+                            <th className="px-5 py-3.5 font-bold text-center">Posisi</th>
+                            <th className="px-5 py-3.5 font-bold text-right flex items-center justify-end gap-1.5">
                                 {selectedMetricLabel} <ArrowUpDown size={12} />
                             </th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50 text-sm">
+                    <tbody className="divide-y divide-border text-sm">
                         {rankedPlayers.map((player, index) => {
                             const rank = index + 1;
-                            // Warna khusus untuk badge top 3 di dalam list
-                            let rankBadge = "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400";
-                            if (rank === 1) rankBadge = "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400";
-                            if (rank === 2) rankBadge = "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300";
-                            if (rank === 3) rankBadge = "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400";
+                            
+                            // Visualisasi badge ranking untuk membedakan top 3 dan sisanya di dalam tabel
+                            let rankBadge = "bg-muted text-muted-foreground";
+                            if (rank === 1) rankBadge = "bg-primary text-primary-foreground";
+                            if (rank === 2) rankBadge = "bg-foreground text-background";
+                            if (rank === 3) rankBadge = "bg-border text-foreground";
 
                             return (
-                                <tr key={player.player_id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors">
-                                    <td className="px-5 py-3 text-center">
-                                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-black text-xs ${rankBadge}`}>
+                                <tr key={player.player_id} className="hover:bg-muted/30 transition-colors group">
+                                    <td className="px-5 py-3.5 text-center">
+                                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-black text-[10px] ${rankBadge}`}>
                                             {rank}
                                         </span>
                                     </td>
-                                    <td className="px-5 py-3 font-bold text-zinc-800 dark:text-zinc-200">
+                                    <td className="px-5 py-3.5 font-bold text-foreground group-hover:text-primary transition-colors">
                                         {player.name}
                                     </td>
-                                    <td className="px-5 py-3 text-center">
-                                        <span className="text-[10px] font-bold text-zinc-500 px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">
+                                    <td className="px-5 py-3.5 text-center">
+                                        <span className="text-[9px] font-bold text-muted-foreground px-2 py-1 bg-muted rounded uppercase tracking-wider">
                                             {player.position}
                                         </span>
                                     </td>
-                                    <td className="px-5 py-3 text-right font-black text-zinc-900 dark:text-zinc-100">
-                                        {player.metricValue > 0 ? player.metricValue : '-'}
+                                    <td className="px-5 py-3.5">
+                                        <div className="flex flex-col items-end justify-center">
+                                            <span className="font-black text-foreground">
+                                                {player.metricValue > 0 ? player.metricValue : '-'}
+                                            </span>
+                                            <DiffIndicator val={player.metricValue} avg={teamAverage} />
+                                        </div>
                                     </td>
                                 </tr>
                             );
@@ -176,8 +207,11 @@ export default function Leaderboard({ log, playersData }) {
                         
                         {rankedPlayers.length === 0 && (
                             <tr>
-                                <td colSpan="4" className="px-5 py-10 text-center text-zinc-500 text-sm font-semibold">
-                                    Belum ada data metrik yang diinput untuk sesi ini.
+                                <td colSpan="4" className="px-5 py-12 text-center text-muted-foreground text-sm font-semibold">
+                                    <div className="flex flex-col items-center justify-center gap-2">
+                                        <Medal size={32} className="opacity-20" />
+                                        Belum ada data metrik yang diinput untuk filter ini.
+                                    </div>
                                 </td>
                             </tr>
                         )}

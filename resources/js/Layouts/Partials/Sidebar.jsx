@@ -111,17 +111,12 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                             activeRule: 'analysis.player.acwr' 
                         },
                         { 
-                            name: 'Individual Progress', 
-                            icon: TrendingUp, 
-                            href: '#', 
-                            activeRule: 'analysis.player.progress' 
+                            name: 'Player Comparison', 
+                            icon: GitCompare, 
+                            href: route('analysis.player.comparison'),
+                            activeRule: 'analysis.player.comparison' 
                         },
-                        { 
-                            name: 'Radar Comparison', 
-                            icon: Radar, 
-                            href: '#', 
-                            activeRule: 'analysis.player.radar' 
-                        }
+                        
                     ]
                 },
                 { 
@@ -185,7 +180,7 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
         <aside 
             className={`${
                 isExpanded ? 'w-64' : 'w-16'
-            } hidden sm:flex flex-col bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] relative z-20 h-full overflow-visible`}
+            } hidden sm:flex flex-col bg-white dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] relative z-20 h-full overflow-visible z-50`}
         >
             {/* Header Sidebar */}
             <div className="h-14 shrink-0 flex items-center justify-between px-3 border-b border-zinc-200 dark:border-zinc-800/80">

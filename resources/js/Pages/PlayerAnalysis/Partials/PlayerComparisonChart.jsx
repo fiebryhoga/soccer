@@ -1,0 +1,308 @@
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Settings2, BarChart2, LineChart as LineChartIcon, Trash2, ChevronDown, Check, ChevronUp, RefreshCw } from 'lucide-react';
+import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList } from 'recharts';
+import { FIXED_EXCEL_COLUMNS, MATCH_EXCEL_COLUMNS } from '@/Constants/metrics';
+
+const COLOR_PALETTE = ['#0ea5e9', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#f43f5e'];
+
+export default function PlayerComparisonChart({ config, playersData, onUpdate, onRemove }) {
+    const dropdownRef = useRef(null);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    
+    // Fitur Accordion Buka/Tutup Pengaturan
+    const [isConfigOpen, setIsConfigOpen] = useState(config.selectedParams?.length === 0);
+
+    const { 
+        selectedParams = [], 
+        paramColors = {}, 
+        chartType = 'bar'
+    } = config;
+
+    // Filter metrik yang valid
+    const validMetrics = useMemo(() => {
+        return FIXED_EXCEL_COLUMNS.filter(c => !['selected', 'selected_hr4', 'selected_hr5', 'selected_pl', 'sort_order'].includes(c.id));
+    }, []);
+
+    const chartTitle = selectedParams.length > 0 
+        ? selectedParams.map(id => validMetrics.find(m => m.id === id)?.label || id).join(' vs ')
+        : 'Pilih Metrik...';
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setIsDropdownOpen(false);
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const handleToggleParam = (metricId) => {
+        let newParams;
+        let newColors = { ...paramColors };
+
+        if (selectedParams.includes(metricId)) {
+            newParams = selectedParams.filter(m => m !== metricId);
+        } else {
+            if (selectedParams.length < 3) {
+                newParams = [...selectedParams, metricId];
+                if (!newColors[metricId]) {
+                    const usedColors = Object.values(newColors);
+                    const availableColor = COLOR_PALETTE.find(c => !usedColors.includes(c)) || COLOR_PALETTE[newParams.length];
+                    newColors[metricId] = availableColor;
+                }
+            } else {
+                alert("Maksimal hanya bisa membandingkan 3 parameter sekaligus.");
+                return;
+            }
+        }
+        onUpdate({ selectedParams: newParams, paramColors: newColors });
+    };
+
+    // FORMAT DATA CHART: Map data metrik pemain dari objek ke format linear Recharts
+    const chartData = useMemo(() => {
+        return playersData.map(player => {
+            // Buat singkatan nama depan & nama belakang agar X-Axis rapi
+            const nameParts = player.name.trim().split(' ');
+            const shortName = nameParts.length === 1 ? nameParts[0] : `${nameParts[0].charAt(0)}. ${nameParts[nameParts.length - 1]}`;
+
+            const dataPoint = { 
+                name: shortName, 
+                fullName: player.name,
+                position: player.position 
+            };
+            
+            selectedParams.forEach(paramId => {
+                const rawVal = player.metrics?.[paramId] || 0;
+                let numericValue = 0;
+                
+                // Parsing value durasi (HH:MM:SS) ke detik atau value float biasa
+                if (typeof rawVal === 'string' && rawVal.includes(':')) {
+                    const parts = rawVal.split(':').map(Number);
+                    if (parts.length === 3) numericValue = (parts[0] * 3600) + (parts[1] * 60) + (parts[2] || 0);
+                    else if (parts.length === 2) numericValue = (parts[0] * 60) + (parts[1] || 0);
+                } else {
+                    numericValue = parseFloat(String(rawVal).replace(',', '.')) || 0;
+                }
+
+                dataPoint[paramId] = numericValue;
+                dataPoint[`raw_${paramId}`] = rawVal; // Simpan aslinya untuk tooltip
+            });
+
+            return dataPoint;
+        });
+    }, [playersData, selectedParams]);
+
+    const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+            const playerFullName = payload[0]?.payload?.fullName;
+            const playerPosition = payload[0]?.payload?.position;
+            return (
+                <div className="bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl shadow-2xl z-[1000] min-w-[200px]">
+                    <p className="font-bold text-zinc-900 dark:text-zinc-100 mb-1 flex items-center justify-between gap-4">
+                        {playerFullName}
+                        <span className="px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 rounded text-[9px] uppercase tracking-widest">{playerPosition}</span>
+                    </p>
+                    <div className="border-b border-zinc-200 dark:border-zinc-800 pb-2 mb-2"></div>
+                    
+                    <div className="flex flex-col gap-2.5">
+                        {payload.map((entry, index) => {
+                            const rawKey = `raw_${entry.dataKey}`;
+                            const displayValue = entry.payload[rawKey] || entry.value || '0'; 
+                            
+                            return (
+                                <div key={index} className="flex items-center justify-between gap-6">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2.5 h-2.5 rounded-sm shadow-sm" style={{ backgroundColor: entry.color }}></div>
+                                        <span className="font-medium text-xs text-zinc-600 dark:text-zinc-400">{entry.name}:</span>
+                                    </div>
+                                    <span className="font-black text-sm text-zinc-900 dark:text-white">{displayValue}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    const renderTopLabel = ({ x, y, width, value, color }) => {
+        if (!value || value === '0') return null;
+        const xPos = width ? x + width / 2 : x;
+        return (
+            <text x={xPos} y={y - 10} fill={color} fontSize={10} fontWeight="900" textAnchor="start" transform={`rotate(-90, ${xPos}, ${y - 10})`}>
+                {value}
+            </text>
+        );
+    };
+
+    const minChartWidth = chartData.length * 70;
+
+    return (
+        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col h-full overflow-visible transition-colors relative z-10">
+            
+            {/* HEADER ACCORDION */}
+            <div 
+                onClick={() => setIsConfigOpen(!isConfigOpen)}
+                className="flex flex-wrap items-center justify-between px-4 md:px-5 py-4 bg-zinc-50/50 dark:bg-zinc-900/30 rounded-t-2xl gap-3 cursor-pointer hover:bg-zinc-100/50 dark:hover:bg-zinc-900/60 transition-colors select-none group border-b border-zinc-100 dark:border-zinc-800/80"
+            >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="p-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-sm shrink-0 text-amber-500">
+                        <Settings2 size={16} /> 
+                    </div>
+                    <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100 truncate">
+                        {chartTitle} 
+                    </h3>
+                    <div className="text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors bg-white dark:bg-zinc-800 p-1 rounded-md border border-zinc-200 dark:border-zinc-700 shadow-sm ml-2">
+                        {isConfigOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </div>
+                </div>
+                
+                <div className="shrink-0" onClick={e => e.stopPropagation()}>
+                    <button onClick={onRemove} title="Hapus Chart" className="p-1.5 text-zinc-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-200 dark:hover:border-red-900/50 transition-all rounded-lg">
+                        <Trash2 size={16} />
+                    </button>
+                </div>
+            </div>
+
+            {/* PENGATURAN GRAFIK (COLLAPSIBLE) */}
+            <div className={`transition-all duration-300 ease-in-out border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 relative z-50 ${isConfigOpen ? 'block' : 'hidden'}`}>
+                <div className="p-4 md:p-5 flex flex-wrap gap-4 items-end">
+                    
+                    {/* Dropdown Metric (z-[999] agar melayang di atas segalanya) */}
+                    <div className="relative flex-1 min-w-[220px]" ref={dropdownRef}>
+                        <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block mb-1.5">Pilih Parameter (Max 3)</label>
+                        <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center justify-between gap-2 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2.5 w-full text-sm font-bold text-zinc-900 dark:text-zinc-100 shadow-sm outline-none transition-all">
+                            <span className="truncate">{selectedParams.length === 0 ? 'Pilih Metrik...' : `${selectedParams.length} Metrik Dipilih`}</span>
+                            <ChevronDown size={14} className={`text-zinc-400 dark:text-zinc-500 shrink-0 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {isDropdownOpen && (
+                            <div className="absolute top-full left-0 mt-2 w-full sm:w-[320px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl z-[999] overflow-hidden flex flex-col max-h-80 animate-in fade-in zoom-in-95">
+                                <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/50 px-4 py-3 border-b border-zinc-200 dark:border-zinc-700">
+                                    <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Katalog Metrik</span>
+                                    <button onClick={() => onUpdate({ selectedParams: [] })} className="text-[9px] font-black text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 uppercase tracking-wider bg-red-50 dark:bg-red-900/30 px-2.5 py-1.5 rounded transition-colors">CLEAR</button>
+                                </div>
+                                <div className="overflow-y-auto p-2 custom-scrollbar space-y-1">
+                                    {validMetrics.map(metric => {
+                                        const isSelected = selectedParams.includes(metric.id);
+                                        return (
+                                            <div key={metric.id} onClick={() => handleToggleParam(metric.id)} className={`flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-zinc-100 dark:bg-zinc-800' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}>
+                                                <span className={`text-xs font-bold ${isSelected ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'}`}>
+                                                    {metric.label}
+                                                </span>
+                                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ml-2 ${isSelected ? 'bg-zinc-900 border-zinc-900 dark:bg-white dark:border-white' : 'border-zinc-300 dark:border-zinc-600 bg-transparent'}`}>
+                                                    {isSelected && <Check size={10} className="text-white dark:text-zinc-900 stroke-[3]" />}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Color Swatches */}
+                    {selectedParams.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-2">
+                            {selectedParams.map(paramId => {
+                                const paramLabel = validMetrics.find(m => m.id === paramId)?.label || paramId;
+                                return (
+                                    <div key={paramId} className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg py-2 px-3 shadow-sm">
+                                        <div className="relative w-5 h-5 rounded-full overflow-hidden border border-zinc-300 dark:border-zinc-700 shadow-inner shrink-0">
+                                            <input type="color" value={paramColors[paramId]} onChange={e => onUpdate({ paramColors: { ...paramColors, [paramId]: e.target.value } })} className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer border-0 bg-transparent p-0 shrink-0" />
+                                        </div>
+                                        <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 truncate max-w-[80px] sm:max-w-[120px]">{paramLabel}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Chart Type Toggle */}
+                    <div className="flex flex-col gap-1.5 ml-auto shrink-0">
+                        <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Tipe Visual</label>
+                        <div className="flex border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg shadow-inner">
+                            <button type="button" onClick={() => onUpdate({ chartType: 'bar' })} className={`px-4 py-1.5 rounded-md flex justify-center items-center transition-colors ${chartType === 'bar' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}><BarChart2 size={14} /></button>
+                            <button type="button" onClick={() => onUpdate({ chartType: 'line' })} className={`px-4 py-1.5 rounded-md flex justify-center items-center transition-colors ${chartType === 'line' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}><LineChartIcon size={14} /></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* CANVAS GRAFIK */}
+            <div className="relative z-10 flex-1">
+                {selectedParams.length === 0 ? (
+                    <div className="h-[400px] flex items-center justify-center text-center p-10 bg-zinc-50/50 dark:bg-zinc-900/10 rounded-b-2xl">
+                        <div className="flex flex-col items-center">
+                            <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                <BarChart2 className="text-zinc-400 dark:text-zinc-600 opacity-50" size={32} />
+                            </div>
+                            <h4 className="text-zinc-900 dark:text-white font-black text-sm">Grafik Belum Terbentuk</h4>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-[200px]">Buka pengaturan dan pilih parameter untuk memvisualisasikan data pemain.</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className={`w-full overflow-x-auto custom-scrollbar pb-6 pt-16 px-2 md:px-6 rounded-b-2xl`}>
+                        <div style={{ minWidth: `${Math.max(400, minChartWidth)}px`, height: '400px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 40 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-zinc-200 dark:text-zinc-800 opacity-70" vertical={false} />
+                                    
+                                    <XAxis 
+                                        dataKey="name" 
+                                        interval={0} 
+                                        height={60} 
+                                        axisLine={false} 
+                                        tickLine={false}
+                                        tick={(props) => {
+                                            const { x, y, payload } = props;
+                                            return <text x={x} y={y + 10} textAnchor="end" fill="currentColor" className="text-zinc-500 dark:text-zinc-400 text-[10px] font-bold" transform={`rotate(-25, ${x}, ${y + 10})`}>{payload.value}</text>;
+                                        }}
+                                    />
+                                    
+                                    {selectedParams.map((metric, index) => {
+                                        const orientation = index % 2 === 0 ? 'left' : 'right';
+                                        return (
+                                            <YAxis 
+                                                key={`axis-${metric}`} 
+                                                yAxisId={metric} 
+                                                orientation={orientation} 
+                                                hide={index > 1} 
+                                                domain={[0, dataMax => dataMax === 0 ? 100 : Math.ceil(dataMax * 1.25)]}
+                                                tick={{ fontSize: 10, fill: paramColors[metric], fontWeight: 'bold' }} 
+                                                axisLine={false} 
+                                                tickLine={false} 
+                                            />
+                                        );
+                                    })}
+
+                                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'currentColor', className: 'text-zinc-400 dark:text-zinc-600 opacity-10' }} />
+                                    <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', top: -30 }} iconType="circle"/>
+
+                                    {selectedParams.map((metric) => {
+                                        const color = paramColors[metric];
+                                        const labelName = validMetrics.find(m => m.id === metric)?.label || metric;
+
+                                        if (chartType === 'bar') {
+                                            return (
+                                                <Bar key={metric} yAxisId={metric} dataKey={metric} name={labelName} fill={color} radius={[6, 6, 0, 0]} maxBarSize={45}>
+                                                    <LabelList dataKey={`raw_${metric}`} content={(props) => renderTopLabel({ ...props, color })} />
+                                                </Bar>
+                                            );
+                                        } else {
+                                            return (
+                                                <Line key={metric} yAxisId={metric} type="monotone" dataKey={metric} name={labelName} stroke={color} strokeWidth={3} dot={{ r: 4, strokeWidth: 2, className: 'fill-white dark:fill-zinc-950' }} activeDot={{ r: 6, strokeWidth: 0, fill: color }}>
+                                                    <LabelList dataKey={`raw_${metric}`} content={(props) => renderTopLabel({ ...props, color })} />
+                                                </Line>
+                                            );
+                                        }
+                                    })}
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}

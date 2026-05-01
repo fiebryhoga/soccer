@@ -129,4 +129,58 @@ class PlayerAnalysisController extends Controller
             'endDate' => $endDate
         ]);
     }
+
+    // Tambahkan method ini di App\Http\Controllers\PlayerAnalysisController
+
+public function playerComparison(Request $request)
+{
+    $club = \App\Models\Club::first();
+
+    // 1. Ambil semua log performa untuk dropdown pencarian sesi
+    $sessions = \App\Models\PerformanceLog::where('club_id', $club->id)
+        ->orderBy('date', 'desc')
+        ->get(['id', 'title', 'date', 'type', 'tag']);
+
+    // 2. Tentukan sesi yang sedang aktif (default ke sesi paling terbaru jika tidak ada request)
+    $sessionId = $request->query('session_id');
+    if (!$sessionId && $sessions->count() > 0) {
+        $sessionId = $sessions->first()->id;
+    }
+
+    // 3. Ambil daftar pemain yang IKUT pada sesi terpilih, berserta metriknya
+    $availablePlayers = [];
+    if ($sessionId) {
+        $metrics = \App\Models\PlayerMetric::with('player:id,name,position,position_number')
+            ->where('performance_log_id', $sessionId)
+            ->get();
+
+        foreach ($metrics as $metric) {
+            // Abaikan pemain yang di-set tidak bermain (jika ada flag is_playing, sesuaikan)
+            $metricsData = is_array($metric->metrics) ? $metric->metrics : json_decode($metric->metrics, true);
+            
+            $availablePlayers[] = [
+                'id' => $metric->player->id,
+                'name' => $metric->player->name,
+                'position' => $metric->player->position,
+                'position_number' => $metric->player->position_number,
+                'metrics' => $metricsData
+            ];
+        }
+    }
+
+    // Sort pemain berdasarkan nomor posisi
+    usort($availablePlayers, function($a, $b) {
+        return $a['position_number'] <=> $b['position_number'];
+    });
+
+    // Opsional: Jika kamu punya tabel ChartTemplate, kirimkan juga
+    $chartTemplates = \App\Models\ChartTemplate::all() ?? [];
+
+    return inertia('PlayerAnalysis/PlayerComparison', [
+        'sessions' => $sessions,
+        'selectedSessionId' => (int) $sessionId,
+        'availablePlayers' => $availablePlayers,
+        'chartTemplates' => $chartTemplates
+    ]);
+}
 }

@@ -10,22 +10,33 @@ const DIVIDE_BY_10_COLS = [
 ];
 
 // FUNGSI PINTAR: Filter pemain berdasarkan Centang (Checkbox) masing-masing kategori
-const getTargetPlayers = (players, colId) => {
+// PERBAIKAN: Fungsi ini hanya diaktifkan JIKA perhitungan adalah Team Average.
+// PERBAIKAN: Accels, Decels, dan Velocity tidak ikut difilter oleh 'selected' utama.
+const getTargetPlayers = (players, colId, isTeamAverage) => {
+    // Jika BUKAN Team Average (berarti Avg Posisi), gunakan SEMUA pemain di grup itu
+    if (!isTeamAverage) return players;
+
+    const distanceGroup = ['first_half_distance', 'second_half_distance', 'total_distance', 'dist_per_min', 'distance_1st', 'distance_2nd', 'hir_18_24_kmh', 'sprint_distance', 'total_18kmh'];
     const hr4Group = ['hr_band_4_dist', 'hr_band_4_dur']; 
     const hr5Group = ['hr_band_5_dist', 'hr_band_5_dur']; 
     const plGroup = ['player_load'];
 
+    // Filter berdasarkan checkbox spesifik
     if (hr4Group.includes(colId)) return players.filter(p => p.selected_hr4 !== false);
     if (hr5Group.includes(colId)) return players.filter(p => p.selected_hr5 !== false);
     if (plGroup.includes(colId)) return players.filter(p => p.selected_pl !== false);
     
-    // Default (Untuk Distance, Duration, Velocity, dll)
-    return players.filter(p => p.selected !== false); 
+    // Filter Distance Group menggunakan checkbox 'selected' utama
+    if (distanceGroup.includes(colId)) return players.filter(p => p.selected !== false); 
+
+    // Selain itu (seperti duration, accels, decels, max_velocity), TIDAK perlu checkbox.
+    // Asalkan pemain is_playing !== false (sudah disaring dari parent), ikut dihitung.
+    return players; 
 };
 
 const calculateLocalAverage = (playersGroup, colId, getAutoCalculatedValue, isTeamAverage) => {
     let sum = 0; let count = 0; let isTime = false;
-    const targetPlayers = getTargetPlayers(playersGroup, colId);
+    const targetPlayers = getTargetPlayers(playersGroup, colId, isTeamAverage);
 
     targetPlayers.forEach(p => {
         const val = getAutoCalculatedValue(p, colId);
@@ -46,6 +57,7 @@ const calculateLocalAverage = (playersGroup, colId, getAutoCalculatedValue, isTe
 
     if (count === 0 && sum === 0) return '-';
 
+    // Logika bagi 10 HANYA untuk Team Average
     if (isTeamAverage && DIVIDE_BY_10_COLS.includes(colId)) {
         count = 10;
     } else if (count === 0) {
@@ -82,7 +94,8 @@ function MatchAverageRow({ title, groupPlayers, isTeamAverage, actions }) {
                 
                 let avgPercent = 0;
                 if (hasValue && col.hasPercent) {
-                    const targetPlayers = getTargetPlayers(groupPlayers, col.id);
+                    // Gunakan fungsi pintar agar persen juga menghargai filter checkbox
+                    const targetPlayers = getTargetPlayers(groupPlayers, col.id, isTeamAverage);
                     let sumPct = 0; let countPct = 0;
                     targetPlayers.forEach(p => {
                         const rawVal = actions.getAutoCalculatedValue(p, col.id);
@@ -128,11 +141,11 @@ const areEqual = (prev, next) => {
     if (prev.title !== next.title) return false;
     if (prev.groupPlayers.length !== next.groupPlayers.length) return false;
 
-    // Cek referensi objek metrics satu-satu (sangat cepat karena O(n))
     for (let i = 0; i < prev.groupPlayers.length; i++) {
+        // Cek JSON metricsnya
         if (prev.groupPlayers[i].metrics !== next.groupPlayers[i].metrics) return false;
         
-        // Cek juga centangnya
+        // Cek property root state (kalau checkbox nya naruh di root)
         if (prev.groupPlayers[i].selected !== next.groupPlayers[i].selected ||
             prev.groupPlayers[i].selected_hr4 !== next.groupPlayers[i].selected_hr4 ||
             prev.groupPlayers[i].selected_hr5 !== next.groupPlayers[i].selected_hr5 ||

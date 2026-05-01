@@ -15,6 +15,11 @@ const MatchPlayerRow = ({ player, visibleIdx, isBenched, actions }) => {
         : 'hover:bg-zinc-50/80 dark:hover:bg-zinc-900/40'
     }`;
 
+    const isSelected = player.selected ?? player.metrics?.selected ?? true;
+    const isSelectedHR4 = player.selected_hr4 ?? player.metrics?.selected_hr4 ?? true;
+    const isSelectedHR5 = player.selected_hr5 ?? player.metrics?.selected_hr5 ?? true;
+    const isSelectedPL = player.selected_pl ?? player.metrics?.selected_pl ?? true;
+
     return (
         <tr 
             draggable={true} 
@@ -39,8 +44,8 @@ const MatchPlayerRow = ({ player, visibleIdx, isBenched, actions }) => {
             </td>
 
             <td style={{ left: '90px', width: '40px', minWidth: '40px' }} className={`p-1.5 sticky z-20 text-center border-r border-zinc-100 dark:border-zinc-800/50 bg-clip-padding ${rowStyle}`}>
-                <button type="button" onClick={() => actions.togglePlayerSelection(player.originalIndex, 'selected')} className={`${player.selected ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-300 dark:text-zinc-700'} outline-none transition-colors`}>
-                    {player.selected ? <CheckSquare size={14} strokeWidth={2.5} /> : <Square size={14} strokeWidth={2.5} />}
+                <button type="button" onClick={() => actions.togglePlayerSelection(player.originalIndex, 'selected')} className={`${isSelected ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-300 dark:text-zinc-700'} outline-none transition-colors`}>
+                    {isSelected ? <CheckSquare size={14} strokeWidth={2.5} /> : <Square size={14} strokeWidth={2.5} />}
                 </button>
             </td>
 
@@ -81,11 +86,11 @@ const MatchPlayerRow = ({ player, visibleIdx, isBenched, actions }) => {
                     <React.Fragment key={col.id}>
                         <td className={`p-1 border-l border-zinc-100 dark:border-zinc-800/60 relative transition-colors ${cellBgClass}`}>
                             <div className="flex items-center justify-center gap-1 w-full">
-                                {(isHR4 || isHR5 || isPL) && (
-                                    <button type="button" onClick={() => actions.togglePlayerSelection(player.originalIndex, isHR4 ? 'selected_hr4' : isHR5 ? 'selected_hr5' : 'selected_pl')} className="outline-none shrink-0 text-zinc-300 dark:text-zinc-700 hover:text-zinc-600 dark:hover:text-zinc-400">
-                                        {player[isHR4 ? 'selected_hr4' : isHR5 ? 'selected_hr5' : 'selected_pl'] ? <CheckSquare size={12} strokeWidth={2.5}/> : <Square size={12} strokeWidth={2.5}/>}
-                                    </button>
-                                )}
+                            {(isHR4 || isHR5 || isPL) && (
+                                <button type="button" onClick={() => actions.togglePlayerSelection(player.originalIndex, isHR4 ? 'selected_hr4' : isHR5 ? 'selected_hr5' : 'selected_pl')} className="outline-none shrink-0 text-zinc-300 dark:text-zinc-700 hover:text-zinc-600 dark:hover:text-zinc-400">
+                                    { (isHR4 ? isSelectedHR4 : isHR5 ? isSelectedHR5 : isSelectedPL) ? <CheckSquare size={12} strokeWidth={2.5}/> : <Square size={12} strokeWidth={2.5}/>}
+                                </button>
+                            )}
                                 <input 
                                     type="text" value={rawValue} 
                                     onChange={e => actions.handleChange(player.originalIndex, col.id, e.target.value)} 

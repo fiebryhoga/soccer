@@ -36,7 +36,7 @@ export default function AuthenticatedLayout({ user, headerTitle, headerDescripti
         <div className="flex h-screen bg-zinc-100 dark:bg-[#000000] p-3 sm:p-4 gap-3 sm:gap-3 overflow-hidden font-sans selection:bg-zinc-200 dark:selection:bg-zinc-800">
             
             {/* 2. Sidebar (Otomatis menyesuaikan tinggi layar karena flex) */}
-            <Sidebar isExpanded={isSidebarExpanded} setIsExpanded={setIsSidebarExpanded} />
+            <Sidebar isExpanded={isSidebarExpanded} setIsExpanded={setIsSidebarExpanded}/>
 
             {/* 3. Kolom Kanan diberi gap untuk memisahkan Navbar & Main Content */}
             <div className="flex-1 flex flex-col min-w-0 gap-3 sm:gap-3">

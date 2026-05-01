@@ -1,13 +1,13 @@
 // resources/js/Pages/Analysis/Partials/PlayerWeeklyTable.jsx
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, AlertTriangle, CalendarDays, Activity, Target, Zap, BarChart2, UserCheck } from 'lucide-react';
+import { ChevronDown, ChevronUp, AlertTriangle, CalendarDays, Activity, Target, Zap, BarChart2 } from 'lucide-react';
 
-export default function PlayerWeeklyTable({ weeks, columns, playerName }) {
+export default function PlayerWeeklyTable({ weeks, activeCol, playerName }) {
     const [expandedWeeks, setExpandedWeeks] = useState({});
     
     // Data terbaru di atas
-    const listData = [...weeks].reverse(); 
+    const listData = [...(weeks || [])].reverse(); 
 
     const toggleWeek = (idx) => {
         setExpandedWeeks(prev => ({ ...prev, [idx]: !prev[idx] }));
@@ -18,144 +18,114 @@ export default function PlayerWeeklyTable({ weeks, columns, playerName }) {
         return isStat ? Number(num).toFixed(2) : (Number.isInteger(num) ? num.toString() : Number(num).toFixed(1));
     };
 
-    const activeCol = columns.length > 0 ? columns[0] : null;
     if (!activeCol) return null;
 
     return (
-        <div className="w-full space-y-4">
-            
-            <div className="flex items-end justify-between px-2 pt-2">
-                <div>
-                    <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-2">
-                        <UserCheck size={16} className="text-emerald-500" />
-                        Log Performa: {playerName}
-                    </h3>
-                    <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-1">
-                        Pencatatan data individu untuk <span className="font-bold text-zinc-700 dark:text-zinc-300">{activeCol.label}</span>
-                    </p>
-                </div>
-            </div>
-            
-            <div className="space-y-3">
-                {listData.map((week) => {
-                    const isExpanded = expandedWeeks[week.idx];
-                    const stats = week.stats[activeCol.id];
-                    const isDangerMonotony = stats?.monotony >= 2.0;
+        <div className="w-full divide-y divide-zinc-200 dark:divide-zinc-800 flex flex-col max-h-[500px] overflow-y-auto custom-scrollbar">
+            {listData.map((week) => {
+                
+                const stats = {
+                    weeklyLoad: week.weeklyLoad,
+                    meanDaily: week.meanDaily,
+                    stdDev: week.stdDev,
+                    monotony: week.monotony,
+                    strain: week.strain
+                };
 
-                    return (
-                        <div key={week.idx} className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden transition-all duration-200">
-                            
-                            <button 
-                                onClick={() => toggleWeek(week.idx)}
-                                className="w-full p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-50/50 dark:bg-[#111113] hover:bg-zinc-100/50 dark:hover:bg-zinc-900/80 transition-colors text-left"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-md text-zinc-500 dark:text-zinc-400">
-                                        {isExpanded ? <ChevronUp size={16} strokeWidth={2.5}/> : <ChevronDown size={16} strokeWidth={2.5}/>}
-                                    </div>
-                                    <p className="text-sm font-black text-zinc-900 dark:text-zinc-100 tracking-wide">
-                                        {week.dateRange}
-                                    </p>
-                                </div>
+                const isDangerMonotony = stats.monotony >= 2.0;
 
-                                {!isExpanded && stats && (
-                                    <div className="flex flex-wrap items-center gap-2 md:gap-4 pl-10 md:pl-0 tabular-nums">
-                                        <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md border bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400">
-                                            <span className="text-zinc-400">Load:</span> 
-                                            <span className="text-zinc-900 dark:text-zinc-100">{formatNum(stats.weeklyLoad, true)}</span>
-                                        </div>
-                                        <div className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md border ${isDangerMonotony ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'}`}>
-                                            <span className={isDangerMonotony ? 'text-red-400' : 'text-zinc-400'}>Monotony:</span> 
-                                            <span className={isDangerMonotony ? 'text-red-600 dark:text-red-400 font-bold flex items-center gap-1' : 'text-zinc-900 dark:text-zinc-100'}>
-                                                {formatNum(stats.monotony, true)}
-                                                {isDangerMonotony && <AlertTriangle size={12} strokeWidth={3} />}
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
-                            </button>
-
-                            {isExpanded && stats && (
-                                <div className="p-4 md:p-5 border-t border-zinc-200 dark:border-zinc-800">
-                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 mb-6">
-                                        
-                                        <div className="bg-zinc-50 dark:bg-zinc-900/40 p-3.5 rounded-lg border border-zinc-200/60 dark:border-zinc-800/60 flex flex-col gap-1">
-                                            <div className="flex items-center gap-1.5 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                                <Activity size={12} strokeWidth={3}/> Weekly Load
-                                            </div>
-                                            <span className="text-lg font-black text-zinc-900 dark:text-zinc-100 tabular-nums leading-none mt-1">
-                                                {formatNum(stats.weeklyLoad, true)}
-                                            </span>
-                                        </div>
-                                        
-                                        <div className="bg-zinc-50 dark:bg-zinc-900/40 p-3.5 rounded-lg border border-zinc-200/60 dark:border-zinc-800/60 flex flex-col gap-1">
-                                            <div className="flex items-center gap-1.5 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                                <BarChart2 size={12} strokeWidth={3}/> Mean Daily
-                                            </div>
-                                            <span className="text-lg font-black text-zinc-900 dark:text-zinc-100 tabular-nums leading-none mt-1">
-                                                {formatNum(stats.meanDaily, true)}
-                                            </span>
-                                        </div>
-
-                                        <div className="bg-zinc-50 dark:bg-zinc-900/40 p-3.5 rounded-lg border border-zinc-200/60 dark:border-zinc-800/60 flex flex-col gap-1">
-                                            <div className="flex items-center gap-1.5 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                                <Target size={12} strokeWidth={3}/> Standard Dev
-                                            </div>
-                                            <span className="text-lg font-black text-zinc-900 dark:text-zinc-100 tabular-nums leading-none mt-1">
-                                                {formatNum(stats.stdDev, true)}
-                                            </span>
-                                        </div>
-
-                                        <div className={`p-3.5 rounded-lg border flex flex-col gap-1 col-span-2 md:col-span-1 ${isDangerMonotony ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20' : 'bg-zinc-50 dark:bg-zinc-900/40 border-zinc-200/60 dark:border-zinc-800/60'}`}>
-                                            <div className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest ${isDangerMonotony ? 'text-red-500 dark:text-red-400' : 'text-zinc-400'}`}>
-                                                {isDangerMonotony && <AlertTriangle size={12} strokeWidth={3}/>} Monotony
-                                            </div>
-                                            <span className={`text-lg font-black tabular-nums leading-none mt-1 ${isDangerMonotony ? 'text-red-600 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100'}`}>
-                                                {formatNum(stats.monotony, true)}
-                                            </span>
-                                        </div>
-
-                                        <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3.5 rounded-lg border border-zinc-200 dark:border-zinc-700 flex flex-col gap-1 col-span-2 md:col-span-1 shadow-sm">
-                                            <div className="flex items-center gap-1.5 text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
-                                                <Zap size={12} strokeWidth={3} className="text-zinc-700 dark:text-zinc-300"/> Strain
-                                            </div>
-                                            <span className="text-lg font-black text-zinc-900 dark:text-zinc-100 tabular-nums leading-none mt-1">
-                                                {formatNum(stats.strain, true)}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* LIST HARIAN PLAYER (Membaca Murni dari d.metrics) */}
-                                    <div className="space-y-2">
-                                        <h4 className="text-xs font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                            <CalendarDays size={14} className="text-zinc-400"/> Pencapaian Harian
-                                        </h4>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
-                                            {week.days.map((day, dIdx) => {
-                                                // BACA DARI 'metrics' milik individu tersebut
-                                                const val = day.metrics ? day.metrics[activeCol.id] : 0;
-                                                const isOff = day.type === 'off';
-                                                
-                                                return (
-                                                    <div key={dIdx} className="flex items-center justify-between p-3 rounded-lg border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30">
-                                                        <span className={`text-xs truncate pr-3 ${isOff ? 'italic text-zinc-400 dark:text-zinc-600 font-medium' : 'font-bold text-zinc-700 dark:text-zinc-300'}`}>
-                                                            {day.title}
-                                                        </span>
-                                                        <span className={`text-sm tabular-nums font-black ${!val || val === 0 ? 'text-zinc-300 dark:text-zinc-700' : 'text-zinc-900 dark:text-zinc-100'}`}>
-                                                            {formatNum(val)}
-                                                        </span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                </div>
-                            )}
+                return (
+                    <div key={week.idx} className="p-3 sm:p-5 flex flex-col gap-3">
+                        
+                        <div className="flex items-center justify-between">
+                            <h5 className="text-[11px] sm:text-xs font-black text-zinc-900 dark:text-white tracking-widest uppercase">
+                                {week.dateRange}
+                            </h5>
                         </div>
-                    );
-                })}
-            </div>
+
+                        {/* Indikator Hitungan (Auto-Fit Grid) */}
+                        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))' }}>
+                            
+                            <div className="bg-white dark:bg-zinc-900 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between shadow-sm overflow-hidden">
+                                <div className="flex items-center gap-1 text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest truncate">
+                                    <Activity size={10} className="shrink-0" strokeWidth={3}/> <span className="truncate">Load</span>
+                                </div>
+                                <span className="text-xs font-black text-zinc-900 dark:text-white tabular-nums mt-1.5 truncate" title={formatNum(stats.weeklyLoad, true)}>
+                                    {formatNum(stats.weeklyLoad, true)}
+                                </span>
+                            </div>
+                            
+                            <div className="bg-white dark:bg-zinc-900 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between shadow-sm overflow-hidden">
+                                <div className="flex items-center gap-1 text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest truncate">
+                                    <BarChart2 size={10} className="shrink-0" strokeWidth={3}/> <span className="truncate">Mean/Day</span>
+                                </div>
+                                <span className="text-xs font-black text-zinc-900 dark:text-white tabular-nums mt-1.5 truncate" title={formatNum(stats.meanDaily, true)}>
+                                    {formatNum(stats.meanDaily, true)}
+                                </span>
+                            </div>
+
+                            <div className="bg-white dark:bg-zinc-900 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between shadow-sm overflow-hidden">
+                                <div className="flex items-center gap-1 text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest truncate">
+                                    <Target size={10} className="shrink-0" strokeWidth={3}/> <span className="truncate">Std Dev</span>
+                                </div>
+                                <span className="text-xs font-black text-zinc-900 dark:text-white tabular-nums mt-1.5 truncate" title={formatNum(stats.stdDev, true)}>
+                                    {formatNum(stats.stdDev, true)}
+                                </span>
+                            </div>
+
+                            <div className={`p-2 rounded-lg border flex flex-col justify-between shadow-sm overflow-hidden ${isDangerMonotony ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900/60' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'}`}>
+                                <div className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest truncate ${isDangerMonotony ? 'text-red-600 dark:text-red-400' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                                    {isDangerMonotony && <AlertTriangle size={10} className="shrink-0" strokeWidth={3}/>} <span className="truncate">Monotony</span>
+                                </div>
+                                <span className={`text-xs font-black tabular-nums mt-1.5 truncate ${isDangerMonotony ? 'text-red-600 dark:text-red-400' : 'text-zinc-900 dark:text-white'}`} title={formatNum(stats.monotony, true)}>
+                                    {formatNum(stats.monotony, true)}
+                                </span>
+                            </div>
+
+                            <div className="bg-zinc-900 dark:bg-zinc-100 p-2 rounded-lg border border-transparent flex flex-col justify-between shadow-sm overflow-hidden">
+                                <div className="flex items-center gap-1 text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest truncate">
+                                    <Zap size={10} className="shrink-0 text-zinc-300 dark:text-zinc-600" strokeWidth={3}/> <span className="truncate">Strain</span>
+                                </div>
+                                <span className="text-xs font-black text-white dark:text-zinc-900 tabular-nums mt-1.5 truncate" title={formatNum(stats.strain, true)}>
+                                    {formatNum(stats.strain, true)}
+                                </span>
+                            </div>
+
+                        </div>
+
+                        {/* Breakdown Harian (Auto-Fit) */}
+                        <div className="pt-2">
+                            <h4 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-2 flex items-center gap-1.5 border-b border-zinc-200 dark:border-zinc-800 pb-1.5">
+                                <CalendarDays size={12} /> Laporan Harian: <span className="text-zinc-800 dark:text-zinc-200">{playerName}</span>
+                            </h4>
+                            <div className="grid gap-2 pt-1" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
+                                {week.days.map((day, dIdx) => {
+                                    const val = day.metrics ? day.metrics[activeCol.id] : 0;
+                                    const isOff = day.type === 'off';
+                                    
+                                    return (
+                                        <div key={dIdx} className="flex flex-col p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm overflow-hidden text-left">
+                                            <span 
+                                                className={`text-[9px] mb-1 uppercase tracking-widest w-full truncate ${isOff ? 'text-zinc-400 dark:text-zinc-600 font-bold' : 'font-black text-zinc-700 dark:text-zinc-300'}`}
+                                                title={day.title}
+                                            >
+                                                {day.title}
+                                            </span>
+                                            <span 
+                                                className={`text-xs tabular-nums font-black w-full truncate ${!val || val === 0 ? 'text-zinc-300 dark:text-zinc-700' : 'text-zinc-900 dark:text-white'}`}
+                                                title={formatNum(val)}
+                                            >
+                                                {formatNum(val)}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                    </div>
+                );
+            })}
         </div>
     );
 }

@@ -136,7 +136,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/analysis/player/strain', [PlayerAnalysisController::class, 'playerStrain'])->name('analysis.player.strain');
     Route::get('/analysis/player/acwr', [App\Http\Controllers\PlayerAnalysisController::class, 'playerAcwr'])->name('analysis.player.acwr');
-
+    Route::get('/analysis/player/comparison', [App\Http\Controllers\PlayerAnalysisController::class, 'playerComparison'])->name('analysis.player.comparison');
+    
     Route::prefix('formula')->name('formula.')->group(function () {
         Route::get('/strength', [App\Http\Controllers\FormulaController::class, 'strength'])->name('strength');
         Route::get('/endurance', [App\Http\Controllers\FormulaController::class, 'endurance'])->name('endurance');
@@ -152,6 +153,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/{player}', [App\Http\Controllers\PlayerProfileController::class, 'show'])->name('show');
         // Nanti rute detail pemain masuk ke sini
     });
+
+    Route::post('/analysis/chart-templates', [App\Http\Controllers\PerformanceAnalysisController::class, 'storeChartTemplate'])->name('chart-templates.store');
+Route::delete('/analysis/chart-templates/{id}', [App\Http\Controllers\PerformanceAnalysisController::class, 'destroyChartTemplate'])->name('chart-templates.destroy');
+Route::put('/analysis/chart-templates/{id}', [App\Http\Controllers\PerformanceAnalysisController::class, 'updateChartTemplate'])->name('chart-templates.update');
 
     
 

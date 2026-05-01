@@ -121,24 +121,43 @@ export default function TrainingMetricsTable({ data, setData, getAutoCalculatedV
     };
 
     const toggleSelectAll = (type = 'selected') => {
-        const allSelected = activePlayersWithIndex.every(p => p[type] !== false);
+        const allSelected = activePlayersWithIndex.every(p => (p[type] ?? p.metrics?.[type]) !== false);
+        const targetVal = !allSelected;
+        
         const newData = [...data.players_data];
+        
         activePlayersWithIndex.forEach(p => {
-            newData[p.originalIndex][type] = !allSelected; 
-            if (newData[p.originalIndex].metrics) {
-                newData[p.originalIndex].metrics[type] = !allSelected; 
-            }
+            const idx = p.originalIndex;
+            // Buat objek baru seutuhnya, bukan sekadar mengubah nilainya
+            newData[idx] = {
+                ...newData[idx],
+                [type]: targetVal, // Update Root UI
+                metrics: {
+                    ...(newData[idx].metrics || {}),
+                    [type]: targetVal // Update Payload DB
+                }
+            };
         });
+        
         setData('players_data', newData);
     };
 
+    // PERBAIKAN: Pastikan membuat salinan objek baru (Deep Clone) agar React mendeteksi perubahan
     const togglePlayerSelection = (originalIndex, type = 'selected') => {
         const newData = [...data.players_data];
-        const currentVal = newData[originalIndex][type] !== false; // if undefined consider true
-        newData[originalIndex][type] = !currentVal;
-        if (newData[originalIndex].metrics) {
-            newData[originalIndex].metrics[type] = !currentVal;
-        }
+        const currentVal = newData[originalIndex][type] ?? newData[originalIndex].metrics?.[type] ?? true;
+        const newVal = !currentVal;
+
+        // Buat objek baru seutuhnya, bukan sekadar mengubah nilainya
+        newData[originalIndex] = {
+            ...newData[originalIndex],
+            [type]: newVal, // Update Root UI
+            metrics: {
+                ...(newData[originalIndex].metrics || {}),
+                [type]: newVal // Update Payload DB
+            }
+        };
+        
         setData('players_data', newData);
     };
 

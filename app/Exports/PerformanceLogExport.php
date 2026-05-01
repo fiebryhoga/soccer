@@ -33,25 +33,29 @@ class PerformanceLogExport implements FromView, ShouldAutoSize, WithDrawings
         ]);
     }
 
-    // FUNGSI UNTUK MENYISIPKAN LOGO
     public function drawings()
     {
-        $drawing = new Drawing();
-        $drawing->setName('Logo');
-        $drawing->setDescription('Club Logo');
+        $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+        $drawing->setName('Logo Klub');
+        $drawing->setDescription('Logo');
         
-        // Cek apakah logo ada, jika tidak gunakan logo default atau kosongkan
         if ($this->club && $this->club->logo) {
-            $drawing->setPath(public_path('storage/' . $this->club->logo));
+            $logoPath = public_path('storage/' . $this->club->logo);
+            if (file_exists($logoPath)) {
+                $drawing->setPath($logoPath);
+            } else {
+                return [];
+            }
         } else {
-            // Bisa diarahkan ke logo default jika perlu
             return [];
         }
 
-        $drawing->setHeight(60); // Tinggi gambar dalam pixel
-        $drawing->setCoordinates('A1'); // Letakkan di pojok kiri atas (Sel A1)
-        $drawing->setOffsetX(5); // Geser sedikit agar tidak mepet garis
-        $drawing->setOffsetY(5);
+        // PERBAIKAN UKURAN LOGO AGAR PAS
+        $drawing->setHeight(75); // Kecilkan/paskan tinggi logo (75 pixel biasanya pas untuk 5-6 baris excel)
+        
+        $drawing->setCoordinates('A1'); // Taruh di sel A1
+        $drawing->setOffsetX(10); // Geser 10px dari garis kiri sel A
+        $drawing->setOffsetY(10); // Geser 10px dari garis atas sel 1
 
         return $drawing;
     }
