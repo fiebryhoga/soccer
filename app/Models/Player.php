@@ -37,4 +37,9 @@ class Player extends Model
     {
         return $this->hasMany(PlayerMetric::class);
     }
+
+    public function compositionTests()
+    {
+        return $this->hasMany(CompositionTest::class);
+    }
 }

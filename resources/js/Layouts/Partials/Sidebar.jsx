@@ -22,7 +22,7 @@ import {
     ActivitySquare, 
     Percent, BarChart3, TrendingUp, Radar,
     Calculator, Dumbbell, Timer, ClipboardList,
-    UserSearch
+    UserSearch, Scale
 } from 'lucide-react';
 import IconButton from '@/Components/ui/IconButton';
 
@@ -116,7 +116,7 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                             href: route('analysis.player.comparison'),
                             activeRule: 'analysis.player.comparison' 
                         },
-                        
+
                     ]
                 },
                 { 
@@ -124,6 +124,12 @@ export default function Sidebar({ isExpanded, setIsExpanded }) {
                     icon: UserSearch, 
                     href: route('profiling.index'), 
                     activeRule: 'profiling.*' 
+                },
+                { 
+                    name: 'Body Composition', 
+                    icon: Scale, 
+                    href: route('analysis.composition.index'), 
+                    activeRule: 'analysis.composition.*' 
                 },
                 
                 { 

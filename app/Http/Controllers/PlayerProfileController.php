@@ -8,7 +8,7 @@ use Inertia\Inertia;
 
 class PlayerProfileController extends Controller
 {
-    // Halaman Utama Profiling (Menampilkan daftar pemain untuk dipilih)
+    // Halaman Utama Profiling
     public function index()
     {
         $club = Club::first();
@@ -27,8 +27,17 @@ class PlayerProfileController extends Controller
         ]);
     }
 
+    // Halaman Dashboard Spesifik Pemain
     public function show(Player $player)
     {
+        // Pastikan foto URL ter-generate
+        $player->photo_url = $player->profile_photo ? asset('storage/' . $player->profile_photo) : null;
+
+        // Decode JSON highest_metrics dengan aman
+        $highestMetrics = is_string($player->highest_metrics) ? json_decode($player->highest_metrics, true) : $player->highest_metrics;
+        $player->highest_metrics_data = $highestMetrics ?? [];
+
+        // Data Asesmen Fisik (Tetap dikirim untuk dipakai nanti)
         $categories = \App\Models\AssessmentCategory::with('testItems')->get();
         $assessments = \App\Models\PlayerAssessment::where('player_id', $player->id)->get();
 
@@ -38,6 +47,4 @@ class PlayerProfileController extends Controller
             'assessments' => $assessments
         ]);
     }
-
-    // Nanti kita buat fungsi show() di sini untuk halaman detail/dashboard pemain
 }

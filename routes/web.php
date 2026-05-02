@@ -15,6 +15,7 @@ use App\Http\Controllers\FormulaController;
 use App\Http\Controllers\BenchmarkAssessmentController;
 use App\Http\Controllers\PlayerAssessmentController;
 use App\Http\Controllers\PlayerProfileController;
+use App\Http\Controllers\CompositionTestController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -157,6 +158,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/analysis/chart-templates', [App\Http\Controllers\PerformanceAnalysisController::class, 'storeChartTemplate'])->name('chart-templates.store');
 Route::delete('/analysis/chart-templates/{id}', [App\Http\Controllers\PerformanceAnalysisController::class, 'destroyChartTemplate'])->name('chart-templates.destroy');
 Route::put('/analysis/chart-templates/{id}', [App\Http\Controllers\PerformanceAnalysisController::class, 'updateChartTemplate'])->name('chart-templates.update');
+
+Route::get('/analysis/composition', [App\Http\Controllers\CompositionTestController::class, 'index'])->name('analysis.composition.index');
+Route::post('/analysis/composition/benchmarks', [App\Http\Controllers\CompositionTestController::class, 'saveBenchmarks'])->name('analysis.composition.save-benchmarks');
+Route::get('/analysis/composition/{player}', [App\Http\Controllers\CompositionTestController::class, 'show'])->name('analysis.composition.show');
+Route::post('/analysis/composition', [App\Http\Controllers\CompositionTestController::class, 'store'])->name('analysis.composition.store');
 
     
 
